@@ -1,0 +1,18 @@
+{
+    "Amazon": {
+        "AssetProcessor": {
+            "Settings": {
+                "ScanFolder AudioEngineFMOD/Assets": {
+                    "watch": "@GEMROOT:AudioEngineFMOD@/Assets",
+                    "recursive": 1,
+                    "order": 101
+                },
+                "ScanFolder AudioEngineFMOD/Registry": {
+                    "watch": "@GEMROOT:AudioEngineFMOD@/Registry",
+                    "recursive": 1,
+                    "order": 102
+                }
+            }
+        }
+    }
+}
