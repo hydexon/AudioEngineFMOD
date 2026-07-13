@@ -1,7 +1,11 @@
 #include "AudioSystemImpl_FMOD.h"
 #include "AudioSystemImplCVars.h"
+#include "ATLEntities_FMOD.h"
+#include "FMOD_FileSystemIO.h"
+
 #include <AzCore/Debug/Profiler.h>
 #include <fmod.hpp>
+
 
 using namespace Audio;
 
@@ -54,11 +58,23 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     coreSettings.profilePort = CVars::s_FMODCore_ProfilePort;
     coreSystem->setAdvancedSettings(&coreSettings);
 
+    coreSystem->setFileSystem(
+                SyncIO::AzFileOpen,
+                SyncIO::AzFileClose,
+                SyncIO::AzFileRead,
+                SyncIO::AzFileSeek,
+                AsyncIO::AzAsyncFileRead,
+                AsyncIO::AzAsyncFileCancel,
+                -1
+                );
 
     result = studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
                                       CVars::s_FMODStudio_EnableProfiling ? FMOD_STUDIO_INIT_LIVEUPDATE : FMOD_STUDIO_INIT_NORMAL,
                                       FMOD_INIT_NORMAL,
                                       nullptr);
+
+
+
 
     if(result != FMOD_OK)
     {
@@ -84,13 +100,13 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *objectData, const char *objectName) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    // FMOD Has no motion of "Audio Objects" like wwise..
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *objectData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    // Same here either.
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetAudioObject(IATLAudioObjectData *objectData) {
@@ -159,8 +175,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *ob
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    AZ_Warning("FMODAudioSystem", false, "Set Obstruction Occlusion is not supported in this FMOD implementation.");
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount) {
@@ -288,13 +304,11 @@ void AudioSystemImpl_FMOD::SetLanguage(const char *language) {
 }
 
 const char * const AudioSystemImpl_FMOD::GetImplSubPath() const {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
+    return "fmod/";
 }
 
 const char * const AudioSystemImpl_FMOD::GetImplementationNameString() const {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
+    return "FMODStudio";
 
 }
 

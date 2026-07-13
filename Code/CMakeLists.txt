@@ -143,6 +143,7 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
                 3rdParty::FMOD
                 3rdParty::FMODStudio
                 Gem::AudioSystem.Editor.API
+                AZ::AssetBuilderSDK
     )
 
     ly_add_target(
