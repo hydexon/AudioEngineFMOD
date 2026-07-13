@@ -13,4 +13,7 @@ set(FILES
     Source/Clients/Engine/AudioSystemImpl_FMOD.h
     Source/Clients/Engine/FMOD_FileSystemIO.cpp
     Source/Clients/Engine/FMOD_FileSystemIO.h
+    #Other
+    Source/Clients/Engine/Common_FMOD.h
+    Source/Clients/Engine/Common_FMOD.cpp
 )

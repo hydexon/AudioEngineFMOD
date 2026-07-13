@@ -2,6 +2,7 @@
 #include "AudioSystemImplCVars.h"
 #include "ATLEntities_FMOD.h"
 #include "FMOD_FileSystemIO.h"
+#include "Common_FMOD.h"
 
 #include <AzCore/Debug/Profiler.h>
 #include <fmod.hpp>
@@ -11,6 +12,24 @@ using namespace Audio;
 
 namespace AudioEngineFMOD
 {
+
+    namespace MemCallbacks
+    {
+        void* F_CALL Malloc(unsigned int size, FMOD_MEMORY_TYPE type, const char* srcstr)
+        {
+            return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().Allocate(size, 0, 0, nullptr);
+        }
+
+        void* F_CALL Realloc(void* ptr, unsigned int size, FMOD_MEMORY_TYPE type, const char* srcstr)
+        {
+            return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().ReAllocate(ptr, size, 0);
+        }
+
+        void F_CALL Free(void* ptr, FMOD_MEMORY_TYPE type, const char* srcstr)
+        {
+            return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().DeAllocate(ptr);
+        }
+    }
 
 
 AudioSystemImpl_FMOD::AudioSystemImpl_FMOD()
@@ -33,6 +52,15 @@ void AudioSystemImpl_FMOD::Update(float updateIntervalMS) {
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
+    AZ_Info("FMODAudioSystem", "Initializing FMOD Studio...");
+    FMOD::Memory_Initialize(
+                nullptr,
+                0,
+                MemCallbacks::Malloc,
+                MemCallbacks::Realloc,
+                MemCallbacks::Free
+                );
+
     FMOD_RESULT result = FMOD::Studio::System::create(&studioSystem);
 
     if(result != FMOD_OK)
@@ -75,7 +103,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
 
 
 
-
     if(result != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "Unable to Initialize FMOD Studio");
@@ -95,8 +122,15 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Release() {
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    FMOD::Studio::Bus* masterBus = nullptr;
+    studioSystem->getBus("bus:/", &masterBus);
+    if(masterBus)
+    {
+        masterBus->stopAllEvents(FMOD_STUDIO_STOP_ALLOWFADEOUT);
+        return EAudioRequestStatus::Success;
+    }
+
+    return EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *objectData, const char *objectName) {
@@ -185,8 +219,21 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *ob
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *listenerData, const SATLWorldPosition &newPosition) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    auto ldata = static_cast<SATLListenerData_FMOD*>(listenerData);
+    if(!ldata)
+    {
+        return Audio::EAudioRequestStatus::Failure;
+    }
+
+    FMOD_3D_ATTRIBUTES listenerAttributes = Utils::CreateFMOD3DAttributes(newPosition.GetPositionVec(),
+                                                                          newPosition.GetForwardVec(),
+                                                                          newPosition.GetUpVec(),
+                                                                          ldata->velocity);
+
+    studioSystem->setListenerAttributes(ldata->listenerIndex, &listenerAttributes);
+    studioSystem->setListenerWeight(ldata->listenerIndex, ldata->weight);
+
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {

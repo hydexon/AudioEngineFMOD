@@ -10,20 +10,12 @@
 namespace AudioEngineFMOD
 {
     struct AZIOData {
+        AZ::IO::HandleType handle;
         AZStd::string filename;
         AZ::IO::FileRequestPtr streamingRequest;
         std::atomic<bool> completedStreamerRequest = false;
     };
 
-    static AZ::IO::HandleType GetRealFileHandle(void* ptr)
-    {
-        return static_cast<AZ::IO::HandleType>(reinterpret_cast<uintptr_t>(ptr));
-    }
-
-    static void* SetOpaqueHandle(AZ::IO::HandleType handle)
-    {
-        return reinterpret_cast<void*>(static_cast<uintptr_t>(handle));
-    }
 
     namespace SyncIO
     {
@@ -38,12 +30,10 @@ namespace AudioEngineFMOD
             if(fileHandle != AZ::IO::InvalidHandle)
             {
                 *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load giantic bank files.
-                *handle = SetOpaqueHandle(fileHandle);
-
                 AZIOData* IOData = azcreate(AZIOData);
                 IOData->filename = name;
                 IOData->streamingRequest = nullptr;
-                userData = IOData;
+                *handle = IOData;
 
                 return FMOD_OK;
 
@@ -56,15 +46,11 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileClose(void *handle, void *userData)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
-        auto fileHandle = GetRealFileHandle(handle);
-        if(fileIO->Close(fileHandle))
-        {
-            if(userData)
-            {
-                auto iodata = reinterpret_cast<AZIOData*>(userData);
-                azdestroy(iodata);
-            }
+        auto iodata = reinterpret_cast<AZIOData*>(handle);
 
+        if(fileIO->Close(iodata->handle))
+        {
+            azdestroy(iodata);
             return FMOD_OK;
         }
 
@@ -74,10 +60,10 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileRead(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesRead, void *userData)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
-        auto fileHandle = GetRealFileHandle(handle);
+        auto iodata = reinterpret_cast<AZIOData*>(handle);
 
         AZ::u64 bytesRead64 = 0;
-        fileIO->Read(fileHandle, buffer, aznumeric_cast<AZ::u64>(sizebytes), false, &bytesRead64);
+        fileIO->Read(iodata->handle, buffer, aznumeric_cast<AZ::u64>(sizebytes), false, &bytesRead64);
         const bool readOk = (bytesRead64 == aznumeric_cast<AZ::u64>(sizebytes));
 
         AZ_Assert(readOk, "Number of bytes read (%llu) for read request doesn't match the requested size (%u)", bytesRead64, sizebytes);
@@ -89,9 +75,9 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileSeek(void *handle, unsigned int pos, void *userData)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
-        auto fileHandle = GetRealFileHandle(handle);
+        auto iodata = reinterpret_cast<AZIOData*>(handle);
 
-        const bool seekOk = fileIO->Seek(fileHandle, aznumeric_cast<AZ::u64>(pos), AZ::IO::SeekType::SeekFromStart);
+        const bool seekOk = fileIO->Seek(iodata->handle, aznumeric_cast<AZ::u64>(pos), AZ::IO::SeekType::SeekFromStart);
         return seekOk ? FMOD_OK : FMOD_ERR_FILE_COULDNOTSEEK;
     }
 
@@ -119,14 +105,14 @@ namespace AudioEngineFMOD
                                                         priority,
                                                         info->offset);
 
-        streamer->SetRequestCompleteCallback(request, [info](AZ::IO::FileRequestPtr request) {
+        auto callback = [&info](AZ::IO::FileRequestHandle request) {
             AZ::IO::IStreamerTypes::RequestStatus status = AZ::Interface<AZ::IO::IStreamer>::Get()->GetRequestStatus(request);
             AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);
 
             switch (status) {
             case AZ::IO::IStreamerTypes::RequestStatus::Completed:
-                info->done(info, FMOD_OK);
                 IOData->completedStreamerRequest = true;
+                info->done(info, FMOD_OK);
                 break;
             case AZ::IO::IStreamerTypes::RequestStatus::Canceled:
                 //Uh oh.
@@ -136,8 +122,9 @@ namespace AudioEngineFMOD
                 info->done(info, FMOD_ERR_FILE_BAD);
                 break;
             }
+        };
 
-        });
+        streamer->SetRequestCompleteCallback(request, std::move(callback));
         IOData->streamingRequest = request;
         streamer->QueueRequest(IOData->streamingRequest);
         return FMOD_OK;
