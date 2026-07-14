@@ -13,7 +13,6 @@ namespace AudioEngineFMOD
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
-        Audio::EAudioEventState audioEventState;
         AZStd::string eventPath;
         bool preloadSampleData;
     };

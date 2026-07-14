@@ -55,6 +55,9 @@ ly_add_target(
             Gem::AudioSystem.API
             3rdParty::FMOD
             3rdParty::FMODStudio
+    RUNTIME_DEPENDENCIES
+        3rdParty::FMOD
+        3rdParty::FMODStudio
 )
 
 # Here add ${gem_name} target, it depends on the Private Object library and Public API interface

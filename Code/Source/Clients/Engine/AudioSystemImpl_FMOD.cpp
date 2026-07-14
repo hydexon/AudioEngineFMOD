@@ -154,23 +154,60 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UpdateAudioObject(IATLAudioObjectData 
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerSync(IATLAudioObjectData *audioObjectData, const IATLTriggerImplData *triggerData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+
+    const auto fmodTriggerData = static_cast<const SATLTriggerImplData_FMOD*>(triggerData);
+    if(!fmodTriggerData)
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    FMOD::Studio::EventDescription* description = nullptr;
+
+    AZStd::string evtURI = AZStd::string::format("event:/%s", fmodTriggerData->eventPath.c_str());
+    studioSystem->getEvent(evtURI.c_str(), &description);
+    if(!description)
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    if(fmodTriggerData->preloadSampleData)
+    {
+        description->loadSampleData();
+    }
+
+
+    m_preparedEventDescriptions.insert({fmodTriggerData->eventPath, description});
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerSync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    const auto fmodTriggerData = static_cast<const SATLTriggerImplData_FMOD*>(triggerData);
+    if(!fmodTriggerData)
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    auto eventPos = m_preparedEventDescriptions.find(fmodTriggerData->eventPath);
+    if(eventPos != m_preparedEventDescriptions.end())
+    {
+        eventPos->second->releaseAllInstances();
+        m_preparedEventDescriptions.erase(eventPos);
+    }
+    else
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerAsync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync(IATLAudioObjectData *pAudioObjectData, const IATLTriggerImplData *pTriggerData, IATLEventData *pEventData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *tventData, const SATLSourceData *sourceData) {

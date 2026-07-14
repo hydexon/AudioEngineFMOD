@@ -4,6 +4,7 @@
 #include <IAudioSystemImplementation.h>
 
 #include <fmod_studio.hpp>
+#include <AzCore/std/containers/unordered_map.h>
 
 namespace AudioEngineFMOD
 {
@@ -190,6 +191,8 @@ namespace AudioEngineFMOD
 
     protected:
         FMOD::Studio::System* studioSystem;
+
+        AZStd::unordered_map<AZStd::string, FMOD::Studio::EventDescription*> m_preparedEventDescriptions;
 
     };
 
