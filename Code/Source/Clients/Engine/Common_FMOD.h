@@ -3,10 +3,20 @@
 #include <fmod_studio.hpp>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/string/string.h>
 
 namespace AudioEngineFMOD
 {
-    typedef AZStd::unordered_map<FMOD_GUID, FMOD::Studio::EventInstance*> InstancesMultiMap;
+    namespace XMLTags
+    {
+        static constexpr const char* FMODEventTag = "FMODStudioEvent";
+        static constexpr const char* FMODParameterTag = "FMODStudioParameter";
+        static constexpr const char* FMODStudioBankTag = "FMODStudioBankFile";
+        static constexpr const char* FMODFileTag = "FMODAudioFile";
+
+        static constexpr const char* FMODStudioEventPathAttribute = "event_path";
+        static constexpr const char* FMODStudioEventSamplePreloadAttr = "preload_sampledata";
+    }
 
     namespace Utils
     {

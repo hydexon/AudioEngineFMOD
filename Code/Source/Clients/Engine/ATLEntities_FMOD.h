@@ -1,24 +1,33 @@
 #pragma once
 
 #include <ATLEntityData.h>
-#include "Common_FMOD.h"
+#include <fmod_studio.hpp>
 
 namespace AudioEngineFMOD
 {
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
-        InstancesMultiMap m_activeInstances;
+        FMOD_3D_ATTRIBUTES m_3dAttributes = {};
+        AZStd::vector<FMOD::Studio::EventInstance*> m_activeInstances;
+    };
+
+    struct SATLEventData_FMOD : public Audio::IATLEventData
+    {
     };
 
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
-        AZStd::string eventPath;
-        bool preloadSampleData;
+        FMOD::Studio::EventDescription* m_eventDescription;
+        bool m_preloadSampleData = false;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
     {
+        SATLListenerData_FMOD(int lidx = 0)
+            : listenerIndex(lidx)
+        {}
+
         int listenerIndex = 0;
         AZ::Vector3 velocity = AZ::Vector3::CreateOne();
         float weight = 1.0f;

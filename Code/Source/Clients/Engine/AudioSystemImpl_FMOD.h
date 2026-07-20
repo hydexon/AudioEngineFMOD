@@ -193,6 +193,8 @@ namespace AudioEngineFMOD
         FMOD::Studio::System* studioSystem;
 
         AZStd::unordered_map<AZStd::string, FMOD::Studio::EventDescription*> m_preparedEventDescriptions;
+        void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
+        void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
 
     };
 
