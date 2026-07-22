@@ -10,8 +10,6 @@
 
 namespace AudioEngineFMOD
 {
-    AZ_COMPONENT_IMPL(AudioEngineFMODEditorSystemComponent, "AudioEngineFMODEditorSystemComponent",
-        AudioEngineFMODEditorSystemComponentTypeId, BaseSystemComponent);
 
     void AudioEngineFMODEditorSystemComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -46,6 +44,21 @@ namespace AudioEngineFMOD
     void AudioEngineFMODEditorSystemComponent::GetDependentServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
         BaseSystemComponent::GetDependentServices(dependent);
+    }
+
+    void AudioEngineFMODEditorSystemComponent::InitializeEditorImplPlugin()
+    {
+        m_editorImplPlugin.reset(new CAudioSystemEditor_FMOD());
+    }
+
+    void AudioEngineFMODEditorSystemComponent::ReleaseEditorImplPlugin()
+    {
+        m_editorImplPlugin.release();
+    }
+
+    AudioControls::IAudioSystemEditor* AudioEngineFMODEditorSystemComponent::GetEditorImplPlugin()
+    {
+        return m_editorImplPlugin.get();
     }
 
     void AudioEngineFMODEditorSystemComponent::Activate()

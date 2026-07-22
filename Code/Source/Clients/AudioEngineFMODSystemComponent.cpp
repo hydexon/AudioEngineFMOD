@@ -5,10 +5,16 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <AudioAllocators.h>
+#include <IAudioSystem.h>
+
+#include "Engine/AudioSystemImpl_FMOD.h"
+
+#include <AzCore/Settings/SettingsRegistryMergeUtils.h>
+#include <AzFramework/Platform/PlatformDefaults.h>
+
 namespace AudioEngineFMOD
 {
-    AZ_COMPONENT_IMPL(AudioEngineFMODSystemComponent, "AudioEngineFMODSystemComponent",
-        AudioEngineFMODSystemComponentTypeId);
 
     void AudioEngineFMODSystemComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -22,52 +28,67 @@ namespace AudioEngineFMOD
 
     void AudioEngineFMODSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC_CE("AudioEngineFMODService"));
+        provided.push_back(AZ_CRC_CE("AudioEngineService"));
     }
 
     void AudioEngineFMODSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC_CE("AudioEngineFMODService"));
+        incompatible.push_back(AZ_CRC_CE("AudioEngineService"));
     }
 
     void AudioEngineFMODSystemComponent::GetRequiredServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& required)
     {
+        required.push_back(AZ_CRC("AudioSystemService"));
     }
 
     void AudioEngineFMODSystemComponent::GetDependentServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-    }
-
-    AudioEngineFMODSystemComponent::AudioEngineFMODSystemComponent()
-    {
-        if (AudioEngineFMODInterface::Get() == nullptr)
-        {
-            AudioEngineFMODInterface::Register(this);
-        }
-    }
-
-    AudioEngineFMODSystemComponent::~AudioEngineFMODSystemComponent()
-    {
-        if (AudioEngineFMODInterface::Get() == this)
-        {
-            AudioEngineFMODInterface::Unregister(this);
-        }
+        dependent.push_back(AZ_CRC("AudioSystemService"));
     }
 
     void AudioEngineFMODSystemComponent::Init()
     {
     }
 
+    bool AudioEngineFMODSystemComponent::Initialize()
+    {
+        AZ::SettingsRegistryInterface::FixedValueString assetPlatform = AzFramework::OSPlatformToDefaultAssetPlatform(
+            AZ_TRAIT_OS_PLATFORM_CODENAME);
+        if (assetPlatform.empty())
+        {
+            if (const auto settingsRegistry = AZ::SettingsRegistry::Get(); settingsRegistry != nullptr)
+            {
+                AZ::SettingsRegistryMergeUtils::PlatformGet(*settingsRegistry, assetPlatform,
+                    AZ::SettingsRegistryMergeUtils::BootstrapSettingsRootKey, "assets");
+            }
+        }
+
+        AZ_Info("FMODAudioSystem", "AudioEngineFMOD AssetPlatform: %s", assetPlatform.c_str());
+        m_engineFMOD = AZStd::make_unique<AudioSystemImpl_FMOD>();
+        if(m_engineFMOD)
+        {
+            AZ_Info("FMODAudioSystem", "AudioEngineFMOD Initialized!");
+            Audio::SystemRequest::Initialize initReq;
+            AZ::Interface<Audio::IAudioSystem>::Get()->PushRequestBlocking(AZStd::move(initReq));
+        }
+        return true;
+    }
+
+    void AudioEngineFMODSystemComponent::Release()
+    {
+        m_engineFMOD.reset();
+    }
+
     void AudioEngineFMODSystemComponent::Activate()
     {
-        AudioEngineFMODRequestBus::Handler::BusConnect();
+        Audio::Gem::EngineRequestBus::Handler::BusConnect();
         AZ::TickBus::Handler::BusConnect();
     }
 
     void AudioEngineFMODSystemComponent::Deactivate()
     {
+        Audio::Gem::EngineRequestBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
-        AudioEngineFMODRequestBus::Handler::BusDisconnect();
     }
 
     void AudioEngineFMODSystemComponent::OnTick([[maybe_unused]] float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)

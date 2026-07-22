@@ -4,16 +4,19 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AudioEngineFMOD/AudioEngineFMODBus.h>
+#include <IAudioSystem.h>
+#include <IAudioSystemImplementation.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 namespace AudioEngineFMOD
 {
     class AudioEngineFMODSystemComponent
         : public AZ::Component
-        , protected AudioEngineFMODRequestBus::Handler
         , public AZ::TickBus::Handler
+        , protected Audio::Gem::EngineRequestBus::Handler
     {
     public:
-        AZ_COMPONENT_DECL(AudioEngineFMODSystemComponent);
+        AZ_COMPONENT(AudioEngineFMODSystemComponent, "{B0C9C624-75F4-45BC-A03E-A0663F475493}", AZ::Component);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -22,13 +25,11 @@ namespace AudioEngineFMOD
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
-        AudioEngineFMODSystemComponent();
-        ~AudioEngineFMODSystemComponent();
-
     protected:
         ////////////////////////////////////////////////////////////////////////
-        // AudioEngineFMODRequestBus interface implementation
-
+        // Audio::Gem::EngineRequestBus interface implementation
+        bool Initialize() override;
+        void Release();
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -42,6 +43,8 @@ namespace AudioEngineFMOD
         // AZTickBus interface implementation
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
         ////////////////////////////////////////////////////////////////////////
+    private:
+        AZStd::unique_ptr<Audio::AudioSystemImplementation> m_engineFMOD;
     };
 
 } // namespace AudioEngineFMOD

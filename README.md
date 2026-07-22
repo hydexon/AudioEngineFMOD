@@ -4,7 +4,7 @@
 
 # FMOD Studio for O3DE AudioSystem.
 
-This gem provides a AudioSystem implementation for O3DE using FMOD Studio, this gem also aims to be simpler in their asset pipelines
+This gem provides a _(non-functional)_ AudioSystem implementation for O3DE using FMOD Studio, this gem also aims to be simpler in their asset pipelines
 for soundbanks and individual audio streaming files, removing the need to generate settings, special dependency files generated through
 scripts separatedly, as well to be fully multiplatform in both runtime and authoring.
 

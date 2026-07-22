@@ -25,6 +25,7 @@ namespace AudioEngineFMOD
     {
         const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
         auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
+        AZ_Info("FMODAudioSystem", "FMOD IO is trying to open: %s", fullFilePath.c_str());
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)
         {
@@ -50,6 +51,11 @@ namespace AudioEngineFMOD
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
+
+        if(!iodata)
+        {
+            return FMOD_ERR_FILE_BAD;
+        }
 
         if(fileIO->Close(iodata->handle))
         {
