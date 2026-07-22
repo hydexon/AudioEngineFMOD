@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="fmod_logo.png">
+</div>
+
 # FMOD Studio for O3DE AudioSystem.
 
 This gem provides a AudioSystem implementation for O3DE using FMOD Studio, this gem also aims to be simpler in their asset pipelines
