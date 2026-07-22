@@ -29,18 +29,18 @@ namespace AudioEngineFMOD
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)
         {
+            AZ_Info("FMODAudioSystem", "FMOD File Requested has size: %d", aznumeric_cast<unsigned int>(fileSize));
             AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
-            fileIO->Open(name, AZ::IO::OpenMode::ModeBinary, fileHandle);
-            if(fileHandle != AZ::IO::InvalidHandle)
+            if(fileIO->Open(fullFilePath.data(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle))
             {
-                *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load giantic bank files.
+                AZ_Info("FMODAudioSystem", "FMOD IO Opened this File Successfully!");
+                *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load gigantic bank files.
                 AZIOData* IOData = azcreate(AZIOData);
                 IOData->filename = fullFilePath;
                 IOData->streamingRequest = nullptr;
                 *handle = IOData;
 
                 return FMOD_OK;
-
             }
         }
 
@@ -97,8 +97,13 @@ namespace AudioEngineFMOD
 
     FMOD_RESULT AzAsyncFileRead(FMOD_ASYNCREADINFO *info, void *userData)
     {
-        auto streamer = AZ::Interface<AZ::IO::IStreamer>::Get();
         AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);
+        if(!IOData)
+        {
+            return FMOD_ERR_INVALID_HANDLE;
+        }
+        auto streamer = AZ::Interface<AZ::IO::IStreamer>::Get();
+
         AZStd::string& filename = IOData->filename;
         AZ::u8 priority = aznumeric_caster( //Thank god FMOD and Wwise priority ranges is the same.
               (info->priority << 1) // 100 -> 200
@@ -117,6 +122,11 @@ namespace AudioEngineFMOD
         auto callback = [&info](AZ::IO::FileRequestHandle request) {
             AZ::IO::IStreamerTypes::RequestStatus status = AZ::Interface<AZ::IO::IStreamer>::Get()->GetRequestStatus(request);
             AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);
+            if(!IOData)
+            {
+                info->done(info, FMOD_ERR_INVALID_HANDLE);
+                return;
+            }
 
             switch (status) {
             case AZ::IO::IStreamerTypes::RequestStatus::Completed:
@@ -143,6 +153,10 @@ namespace AudioEngineFMOD
     {
         auto streamer = AZ::Interface<AZ::IO::IStreamer>::Get();
         AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);
+        if(!IOData)
+        {
+            return FMOD_ERR_INVALID_HANDLE;
+        }
 
         if(!IOData->completedStreamerRequest)
         {

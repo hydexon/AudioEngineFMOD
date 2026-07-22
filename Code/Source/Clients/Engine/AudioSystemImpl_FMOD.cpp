@@ -4,6 +4,7 @@
 #include "FMOD_FileSystemIO.h"
 #include "Common_FMOD.h"
 #include "ConfigFMOD.h"
+#include "fmod_errors.h"
 
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/algorithm.h>
@@ -117,7 +118,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     FMOD_RESULT bankResult = studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
     if(bankResult != FMOD_OK)
     {
-        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %d", bankResult);
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %s", FMOD_ErrorString(bankResult));
         m_masterBank = nullptr;
         return EAudioRequestStatus::Failure;
     }
@@ -125,7 +126,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     bankResult = studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
     if(bankResult != FMOD_OK)
     {
-        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %d", bankResult);
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %s", FMOD_ErrorString(bankResult));
         m_masterStringsBank = nullptr;
         return EAudioRequestStatus::Failure;
     }
