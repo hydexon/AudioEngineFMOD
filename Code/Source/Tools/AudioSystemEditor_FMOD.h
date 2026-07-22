@@ -1,0 +1,31 @@
+#pragma once
+
+#include <IAudioSystemEditor.h>
+#include <IAudioConnection.h>
+#include <IAudioSystemControl.h>
+
+namespace AudioEngineFMOD
+{
+    class CAudioSystemEditor_FMOD : public AudioControls::IAudioSystemEditor
+    {
+    public:
+        CAudioSystemEditor_FMOD();
+        ~CAudioSystemEditor_FMOD() override = default;
+
+        // IAudioSystemEditor interface
+        void Reload() override;
+        AudioControls::IAudioSystemControl *CreateControl(const AudioControls::SControlDef &controlDefinition) override;
+        AudioControls::IAudioSystemControl *GetRoot() override;
+        AudioControls::IAudioSystemControl *GetControl(AudioControls::CID id) const override;
+        AudioControls::EACEControlType ImplTypeToATLType(AudioControls::TImplControlType type) const override;
+        AudioControls::TImplControlTypeMask GetCompatibleTypes(AudioControls::EACEControlType atlControlType) const override;
+        AudioControls::TConnectionPtr CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl) override;
+        AudioControls::TConnectionPtr CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType) override;
+        AZ::rapidxml::xml_node<char> *CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType) override;
+        const AZStd::string_view GetTypeIcon(AudioControls::TImplControlType type) const override;
+        const AZStd::string_view GetTypeIconSelected(AudioControls::TImplControlType type) const override;
+        AZStd::string GetName() const override;
+        AZ::IO::FixedMaxPath GetDataPath() const override;
+        void DataSaved() override;
+    };
+}

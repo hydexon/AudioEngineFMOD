@@ -6,6 +6,7 @@
 #include <AzCore/IO/Streamer/FileRequest.h>
 
 #include <IAudioInterfacesCommonData.h>
+#include "ConfigFMOD.h"
 
 namespace AudioEngineFMOD
 {
@@ -22,8 +23,10 @@ namespace AudioEngineFMOD
 
     FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *userData)
     {
+        const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
+        auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
-        if(AZ::u64 fileSize = 0; fileIO->Size(name, fileSize) && fileSize != 0)
+        if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)
         {
             AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
             fileIO->Open(name, AZ::IO::OpenMode::ModeBinary, fileHandle);
@@ -31,7 +34,7 @@ namespace AudioEngineFMOD
             {
                 *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load giantic bank files.
                 AZIOData* IOData = azcreate(AZIOData);
-                IOData->filename = name;
+                IOData->filename = fullFilePath;
                 IOData->streamingRequest = nullptr;
                 *handle = IOData;
 

@@ -16,4 +16,6 @@ set(FILES
     #Other
     Source/Clients/Engine/Common_FMOD.h
     Source/Clients/Engine/Common_FMOD.cpp
+    Source/Clients/Engine/ConfigFMOD.cpp
+    Source/Clients/Engine/ConfigFMOD.h
 )

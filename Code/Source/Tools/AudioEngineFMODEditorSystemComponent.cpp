@@ -4,6 +4,10 @@
 
 #include <AudioEngineFMOD/AudioEngineFMODTypeIds.h>
 
+#include <AudioAllocators.h>
+#include <IAudioSystemEditor.h>
+#include "AudioSystemEditor_FMOD.h"
+
 namespace AudioEngineFMOD
 {
     AZ_COMPONENT_IMPL(AudioEngineFMODEditorSystemComponent, "AudioEngineFMODEditorSystemComponent",

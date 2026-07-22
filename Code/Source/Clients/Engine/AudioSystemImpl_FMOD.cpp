@@ -3,6 +3,7 @@
 #include "ATLEntities_FMOD.h"
 #include "FMOD_FileSystemIO.h"
 #include "Common_FMOD.h"
+#include "ConfigFMOD.h"
 
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/algorithm.h>
@@ -35,6 +36,8 @@ namespace AudioEngineFMOD
 
 AudioSystemImpl_FMOD::AudioSystemImpl_FMOD()
     : studioSystem(nullptr)
+    , m_masterBank(nullptr)
+    , m_masterStringsBank(nullptr)
 {
     AudioSystemImplementationRequestBus::Handler::BusConnect();
     AudioSystemImplementationNotificationBus::Handler::BusConnect();
@@ -107,6 +110,23 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     if(result != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "Unable to Initialize FMOD Studio");
+        return EAudioRequestStatus::Failure;
+    }
+
+    //Load the Master Banks:
+    FMOD_RESULT bankResult = studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
+    if(bankResult != FMOD_OK)
+    {
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %d", bankResult);
+        m_masterBank = nullptr;
+        return EAudioRequestStatus::Failure;
+    }
+
+    bankResult = studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
+    if(bankResult != FMOD_OK)
+    {
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %d", bankResult);
+        m_masterStringsBank = nullptr;
         return EAudioRequestStatus::Failure;
     }
 
