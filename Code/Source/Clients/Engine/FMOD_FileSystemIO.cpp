@@ -11,6 +11,7 @@
 namespace AudioEngineFMOD
 {
     struct AZIOData {
+        AZ::u64 fileSize;
         AZ::IO::HandleType handle;
         AZStd::string filename;
         AZ::IO::FileRequestPtr streamingRequest;
@@ -36,8 +37,10 @@ namespace AudioEngineFMOD
                 AZ_Info("FMODAudioSystem", "FMOD IO Opened this File Successfully!");
                 *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load gigantic bank files.
                 AZIOData* IOData = azcreate(AZIOData);
+                IOData->fileSize = fileSize;
                 IOData->filename = fullFilePath;
                 IOData->streamingRequest = nullptr;
+                IOData->handle = fileHandle;
                 *handle = IOData;
 
                 return FMOD_OK;
@@ -71,14 +74,28 @@ namespace AudioEngineFMOD
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
 
+        if(!iodata)
+        {
+            return FMOD_ERR_INVALID_HANDLE;
+        }
+
         AZ::u64 bytesRead64 = 0;
-        fileIO->Read(iodata->handle, buffer, aznumeric_cast<AZ::u64>(sizebytes), false, &bytesRead64);
-        const bool readOk = (bytesRead64 == aznumeric_cast<AZ::u64>(sizebytes));
-
-        AZ_Assert(readOk, "Number of bytes read (%llu) for read request doesn't match the requested size (%u)", bytesRead64, sizebytes);
+        fileIO->Read(iodata->handle, buffer, aznumeric_cast<AZ::u64>(sizebytes), true, &bytesRead64);
         *bytesRead = aznumeric_cast<unsigned int>(bytesRead64);
+        //const bool readOk = (bytesRead64 == sizebytes);
+        //AZ_Assert(readOk, "Number of bytes read (%llu) for read request doesn't match the requested size (%u)", bytesRead64, aznumeric_cast<AZ::u64>(sizebytes));
 
-        return readOk ? FMOD_OK : FMOD_ERR_FILE_BAD;
+        //return readOk ? FMOD_OK : FMOD_ERR_FILE_BAD;
+
+        if(bytesRead64 < sizebytes)
+        {
+            if(fileIO->Eof(iodata->handle)) {
+                return FMOD_ERR_FILE_EOF;
+            }
+            return FMOD_ERR_FILE_BAD;
+        }
+
+        return FMOD_OK;
     }
 
     FMOD_RESULT AzFileSeek(void *handle, unsigned int pos, void *userData)
@@ -86,7 +103,7 @@ namespace AudioEngineFMOD
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
 
-        const bool seekOk = fileIO->Seek(iodata->handle, aznumeric_cast<AZ::u64>(pos), AZ::IO::SeekType::SeekFromStart);
+        const bool seekOk = fileIO->Seek(iodata->handle, aznumeric_cast<AZ::s64>(pos), AZ::IO::SeekType::SeekFromStart);
         return seekOk ? FMOD_OK : FMOD_ERR_FILE_COULDNOTSEEK;
     }
 

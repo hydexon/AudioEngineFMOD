@@ -96,8 +96,13 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
                 SyncIO::AzFileClose,
                 SyncIO::AzFileRead,
                 SyncIO::AzFileSeek,
+            #if 0
                 AsyncIO::AzAsyncFileRead,
                 AsyncIO::AzAsyncFileCancel,
+            #else
+                nullptr,
+                nullptr,
+            #endif
                 -1
                 );
 
