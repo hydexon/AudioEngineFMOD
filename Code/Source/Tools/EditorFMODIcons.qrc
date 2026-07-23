@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/Editor">
+        <file>EditorFMODIcons/switch.png</file>
+        <file>EditorFMODIcons/state.png</file>
+        <file>EditorFMODIcons/soundbank.png</file>
+        <file>EditorFMODIcons/hammer.png</file>
+        <file>EditorFMODIcons/events.png</file>
+        <file>EditorFMODIcons/bus.png</file>
+        <file>EditorFMODIcons/snapshot.png</file>
+        <file>EditorFMODIcons/invalid.png</file>
+    </qresource>
+</RCC>

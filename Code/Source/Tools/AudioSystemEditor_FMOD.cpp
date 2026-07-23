@@ -1,4 +1,7 @@
 #include "AudioSystemEditor_FMOD.h"
+#include "AudioSystemCtrl_FMOD.h"
+#include <AzCore/Utils/Utils.h>
+#include "../Clients/Engine/ConfigFMOD.h"
 
 namespace AudioEngineFMOD
 {
@@ -30,8 +33,23 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::GetControl(AudioCon
 
 AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioControls::TImplControlType type) const
 {
-    return AudioControls::eACET_TRIGGER;
+    switch(type)
+    {
+    case eFMOD_EVENT:
+        return AudioControls::eACET_TRIGGER;
+    case eFMOD_PARAMETER:
+        return AudioControls::eACET_RTPC;
+    case eFMOD_LABELEDPARAM:
+        return AudioControls::eACET_SWITCH_STATE;
+    case eFMOD_AUXBUS:
+        return AudioControls::eACET_ENVIRONMENT;
+    case eFMOD_SOUNDBANK:
+        return AudioControls::eACET_PRELOAD;
+    case eFMOD_SNAPSHOT:
+        return AudioControls::eACET_ENVIRONMENT;
+    }
 
+    return AudioControls::eACET_NUM_TYPES;
 }
 
 AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(AudioControls::EACEControlType atlControlType) const
@@ -56,12 +74,26 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
 const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIcon(AudioControls::TImplControlType type) const
 {
-    return "";
+    switch(type)
+    {
+    case eFMOD_EVENT:
+        return ":/Editor/EditorFMODIcons/events.png";
+    case eFMOD_PARAMETER:
+        return ":/Editor/EditorFMODIcons/switch.png";
+    case eFMOD_AUXBUS:
+        return ":/Editor/EditorFMODIcons/bus.png";
+    case eFMOD_SOUNDBANK:
+        return ":/Editor/EditorFMODIcons/soundbank.png";
+    case eFMOD_SNAPSHOT:
+        return ":/Editor/EditorFMODIcons/snapshot.png";
+    default:
+        return ":/Editor/EditorFMODIcons/invalid.png";
+    }
 }
 
 const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIconSelected(AudioControls::TImplControlType type) const
 {
-    return "";
+    return GetTypeIcon(type);
 }
 
 AZStd::string CAudioSystemEditor_FMOD::GetName() const
@@ -71,7 +103,8 @@ AZStd::string CAudioSystemEditor_FMOD::GetName() const
 
 AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 {
-    return "";
+    auto projectPath = AZ::IO::FixedMaxPath( AZ::Utils::GetProjectPath() );
+    return (projectPath / "Assets/Audio/FMOD" );
 }
 
 void CAudioSystemEditor_FMOD::DataSaved()

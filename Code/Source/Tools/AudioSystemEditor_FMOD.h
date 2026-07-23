@@ -27,5 +27,7 @@ namespace AudioEngineFMOD
         AZStd::string GetName() const override;
         AZ::IO::FixedMaxPath GetDataPath() const override;
         void DataSaved() override;
+
+    private:
     };
 }

@@ -1,5 +1,6 @@
 
 set(FILES
+    Source/Tools/EditorFMODIcons.qrc
     Source/Tools/AudioEngineFMODEditorSystemComponent.cpp
     Source/Tools/AudioEngineFMODEditorSystemComponent.h
     Source/Tools/AudioSystemEditor_FMOD.cpp
