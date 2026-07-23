@@ -54,7 +54,22 @@ AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioC
 
 AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(AudioControls::EACEControlType atlControlType) const
 {
-    return 0;
+    switch(atlControlType)
+    {
+    case AudioControls::eACET_TRIGGER:
+        return eFMOD_EVENT;
+    case AudioControls::eACET_RTPC:
+        return eFMOD_PARAMETER;
+    case AudioControls::eACET_SWITCH:
+        return eFMOD_LABELEDPARAM;
+    case AudioControls::eACET_SWITCH_STATE:
+        return eFMOD_SNAPSHOT;
+    case AudioControls::eACET_ENVIRONMENT:
+        return eFMOD_AUXBUS;
+    case AudioControls::eACET_PRELOAD:
+        return eFMOD_SOUNDBANK;
+    }
+    return AudioControls::AUDIO_IMPL_INVALID_TYPE;
 }
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
