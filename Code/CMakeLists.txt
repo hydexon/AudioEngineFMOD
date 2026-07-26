@@ -131,6 +131,7 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
     ly_add_target(
         NAME ${gem_name}.Editor.Private.Object STATIC
         NAMESPACE Gem
+        AUTORCC
         FILES_CMAKE
             audioenginefmod_editor_private_files.cmake
         TARGET_PROPERTIES

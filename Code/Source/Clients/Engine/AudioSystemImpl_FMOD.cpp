@@ -136,6 +136,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
+    studioSystem->setNumListeners(3); //@HACK: No idea why O3DE is trying to set 3 listeners.
+
     return EAudioRequestStatus::Success;
 }
 

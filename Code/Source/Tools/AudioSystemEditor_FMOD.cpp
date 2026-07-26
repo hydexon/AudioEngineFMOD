@@ -1,33 +1,104 @@
 #include "AudioSystemEditor_FMOD.h"
 #include "AudioSystemCtrl_FMOD.h"
-#include <AzCore/Utils/Utils.h>
 #include "../Clients/Engine/ConfigFMOD.h"
+
+#include <AzCore/Utils/Utils.h>
+#include <IAudioSystem.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+
+//NOLINTBEGIN
+void InitFMODResources()
+{
+    Q_INIT_RESOURCE(EditorFMODIcons);
+}
+//NOLINTEND
+
+using namespace AudioControls;
 
 namespace AudioEngineFMOD
 {
 
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
 {
-
+    InitFMODResources();
 }
 
 void CAudioSystemEditor_FMOD::Reload()
 {
+    // set all the controls as placeholder as we don't know if
+    // any of them have been removed but still have connections to them
+    for (const auto& idControlPair : m_controls)
+    {
+        TControlPtr control = idControlPair.second;
+        if (control)
+        {
+            control->SetPlaceholder(true);
+        }
+    }
 
+    m_loader.Load(this);
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const AudioControls::SControlDef &controlDefinition)
 {
-    return nullptr;
+    AZStd::string fullName = controlDefinition.m_name;
+    IAudioSystemControl* parent = controlDefinition.m_parentControl;
+    if (parent)
+    {
+        AZ::StringFunc::Path::Join(controlDefinition.m_parentControl->GetName().c_str(), fullName.c_str(), fullName);
+    }
+
+    if (!controlDefinition.m_path.empty())
+    {
+        AZ::StringFunc::Path::Join(controlDefinition.m_path.c_str(), fullName.c_str(), fullName);
+    }
+
+    CID id = Audio::AudioStringToID<CID>(fullName.c_str());
+
+    AudioControls::IAudioSystemControl* control = GetControl(id);
+    if (control)
+    {
+        if (control->IsPlaceholder())
+        {
+            control->SetPlaceholder(false);
+            if (parent && parent->IsPlaceholder())
+            {
+                parent->SetPlaceholder(false);
+            }
+        }
+        return control;
+    }
+    else
+    {
+        TControlPtr newControl = AZStd::make_shared<IAudioSystemCtrl_FMOD>(controlDefinition.m_name, id, controlDefinition.m_type);
+        if (!parent)
+        {
+            parent = &m_rootControl;
+        }
+
+        parent->AddChild(newControl.get());
+        newControl->SetParent(parent);
+        newControl->SetLocalized(controlDefinition.m_isLocalized);
+        m_controls[id] = newControl;
+        return newControl.get();
+    }
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::GetRoot()
 {
-    return nullptr;
+    return &m_rootControl;
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::GetControl(AudioControls::CID id) const
 {
+    if (id != ACE_INVALID_CID)
+    {
+        auto it = m_controls.find(id);
+        if (it != m_controls.end())
+        {
+            return it->second.get();
+        }
+    }
     return nullptr;
 }
 
@@ -68,6 +139,8 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
         return eFMOD_AUXBUS;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
+    default:
+        break;
     }
     return AudioControls::AUDIO_IMPL_INVALID_TYPE;
 }
@@ -119,7 +192,7 @@ AZStd::string CAudioSystemEditor_FMOD::GetName() const
 AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 {
     auto projectPath = AZ::IO::FixedMaxPath( AZ::Utils::GetProjectPath() );
-    return (projectPath / "Assets/Audio/FMOD" );
+    return (projectPath / "Assets" / "Audio" / "FMOD"  );
 }
 
 void CAudioSystemEditor_FMOD::DataSaved()

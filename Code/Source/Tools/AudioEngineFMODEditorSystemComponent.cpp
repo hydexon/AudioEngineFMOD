@@ -17,6 +17,13 @@ namespace AudioEngineFMOD
         {
             serializeContext->Class<AudioEngineFMODEditorSystemComponent, AudioEngineFMODSystemComponent>()
                 ->Version(0);
+
+            if(AZ::EditContext* ec = serializeContext->GetEditContext())
+            {
+                ec->Class<AudioEngineFMODEditorSystemComponent>("Audio Engine FMOD Studio Gem", "FMOD Implementation of the Audio Engine interfaces")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+            }
         }
     }
 
@@ -27,13 +34,11 @@ namespace AudioEngineFMOD
     void AudioEngineFMODEditorSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         BaseSystemComponent::GetProvidedServices(provided);
-        provided.push_back(AZ_CRC_CE("AudioEngineFMODEditorService"));
     }
 
     void AudioEngineFMODEditorSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
         BaseSystemComponent::GetIncompatibleServices(incompatible);
-        incompatible.push_back(AZ_CRC_CE("AudioEngineFMODEditorService"));
     }
 
     void AudioEngineFMODEditorSystemComponent::GetRequiredServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -48,6 +53,7 @@ namespace AudioEngineFMOD
 
     void AudioEngineFMODEditorSystemComponent::InitializeEditorImplPlugin()
     {
+        AZ_Info("FMODAudioSystem", "LE FUCK!");
         m_editorImplPlugin.reset(new CAudioSystemEditor_FMOD());
     }
 
@@ -64,12 +70,14 @@ namespace AudioEngineFMOD
     void AudioEngineFMODEditorSystemComponent::Activate()
     {
         AudioEngineFMODSystemComponent::Activate();
+        AudioControlsEditor::EditorImplPluginEventBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     }
 
     void AudioEngineFMODEditorSystemComponent::Deactivate()
     {
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        AudioControlsEditor::EditorImplPluginEventBus::Handler::BusDisconnect();
         AudioEngineFMODSystemComponent::Deactivate();
     }
 

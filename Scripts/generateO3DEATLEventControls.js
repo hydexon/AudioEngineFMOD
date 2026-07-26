@@ -1,6 +1,6 @@
 
 studio.menu.addMenuItem({
-    name: "O3DE FMOD AudioSystem\\Generate ATL Event Controls",
+    name: "O3DE FMOD AudioSystem\\Generate FMOD Project Info",
     execute: function() {
         outputAllBanksEvents();
     }
@@ -33,58 +33,75 @@ function outputAllBanksEvents()
 
     });
     */
+
     var outputPath = studio.project.filePath;
     var projectName = outputPath.substr(outputPath.lastIndexOf("/") + 1, outputPath.length);
     projectName =  projectName.substring(0, projectName.lastIndexOf('.'));
+    outputPath  = outputPath.substr(0, outputPath.lastIndexOf("/") + 1) + 'FMODStudioInfoData.json';
+    console.log(outputPath);
 
     var allbanks  = studio.project.model.Bank.findInstances({includeDerivedTypes: true});
     var allEvents = studio.project.model.Event.findInstances();
     var allParams = studio.project.model.ParameterPreset.findInstances();
+    var allBuses = studio.project.model.MixerGroup.findInstances();
+    allBuses = allBuses.concat(studio.project.model.MixerReturn.findInstances());
+    allBuses = allBuses.concat(studio.project.workspace.mixer.masterBus);
 
-
-    var xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
-    xml += "<ATLConfig atl_name=\""+projectName+"\">\n";
-    xml += "  <AudioTriggers>\n";
-
-    allEvents.forEach(function(evt) {
-        xml += "    <ATLTrigger atl_name=\""+evt.name.split(" ").join("_") +"\" path=\"z_placeholders\">\n";
-        xml += "        <FMODStudioEvent path=\""+evt.getPath()+"\"/>\n"
-        xml += "    </ATLTrigger>\n";
+    var evts = [];
+    allEvents.forEach(function(evt){
+        evts.push(evt.getPath());
     });
 
-    /*
-    allbanks.forEach(function(bank) {
-        console.log("Bank: " + bank.name);
-
-        if(bank.events.length > 0) {
-            bank.events.forEach(function(evt) {
-                console.log(" - Event: " + evt.getPath() + " ("+ evt.name + ")");
-            });
-        }
-        else {
-            console.log(" - (No events assigned)");
-        }
+    var banks = [];
+    allbanks.forEach(function(bnk) {
+        var bnkEvts = [];
+        bnk.events.forEach(function(evt){
+            bnkEvts.push(evt.getPath());
+        });
+        banks.push({
+            name: bnk.name,
+            isLocalized: bnk.audioTable !== undefined && bnk.audioTable !== null,
+            events: bnkEvts
+        });
     });
-    */
 
-    xml += "  </AudioTriggers>\n"
-    xml += "  <AudioRtpcs>\n";
-    allParams.forEach(function (param) {
-        var paramPath = param.getPath();
-        paramPath = paramPath.substr(0, paramPath.lastIndexOf("/"));
-        paramPath = paramPath.slice("parameter:/".length);
-        xml += "    <ATLRtpc atl_name=\""+param.name+"\" path=\""+ paramPath +"\">\n";
-        xml += "        <FMODStudioParamPreset path=\""+param.getPath()+"\" />\n";
-        xml += "    </ATLRtpc>\n";
+    var params = [];
+    allParams.forEach(function(ps) {
+        params.push({
+            path: ps.getPath(),
+            labels: ps.parameter.enumerationLabels
+        });
     });
-    xml += "  </AudioRtpcs>\n";
-    xml += "  <AudioSwitches>\n";
-    //TODO: Implement Switches and States.
-    xml += "  </AudioSwitches>\n";
-    xml += "  <AudioEnvironments>\n";
-    //TODO: Implement Environments here.
-    xml += "  </AudioEnvironments>\n";
-    //TODO: Bank Preloads?
-    xml += "</ATLConfig>";
-    console.log(xml);
+
+    var buses = [];
+    allBuses.forEach(function(bus) {
+        buses.push(bus.getPath());
+    });
+    var allSnapshots = studio.project.model.Snapshot.findInstances();
+    var snapshts = [];
+    allSnapshots.forEach(function(ss){
+        snapshts.push(ss.getPath());
+    });
+
+    var FMODExportData = {
+        events: evts,
+        banks: banks,
+        parameters: params,
+        buses: buses,
+        snapshots: snapshts
+    };
+
+    var jsonFile = studio.system.getFile(outputPath);
+    if (!jsonFile.open(studio.system.openMode.WriteOnly)) {
+        alert("Failed to open file {0}\n\nCheck the file is not read-only.".format(outputPath));
+        console.error("Failed to open file {0}.".format(outputPath));
+        return;
+    }
+
+    jsonFile.writeText(JSON.stringify(FMODExportData, null, 2));
+    jsonFile.close();
+
+    alert("JSON file successfully created at, please copy it to your O3DE project's Assets/Audio/FMOD/ directory:\n\n{0}".format(outputPath));
+    console.log("JSON file successfully created at: " + outputPath);
+
 }

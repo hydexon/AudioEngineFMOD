@@ -4,6 +4,9 @@
 #include <IAudioConnection.h>
 #include <IAudioSystemControl.h>
 
+#include "AudioFMODDataLoader.h"
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
 namespace AudioEngineFMOD
 {
     class CAudioSystemEditor_FMOD : public AudioControls::IAudioSystemEditor
@@ -29,5 +32,15 @@ namespace AudioEngineFMOD
         void DataSaved() override;
 
     private:
+        using TControlPtr = AZStd::shared_ptr<AudioControls::IAudioSystemControl>;
+        using TControlMap = AZStd::unordered_map<AudioControls::CID, TControlPtr>;
+        TControlMap m_controls;
+
+        using TConnectionsMap = AZStd::unordered_map<AudioControls::CID, int>;
+        TConnectionsMap m_connectionsByID;
+
+        AudioControls::IAudioSystemControl m_rootControl;
+
+        CAudioFMODDataLoader m_loader;
     };
 }
