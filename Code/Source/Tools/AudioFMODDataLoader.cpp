@@ -48,6 +48,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(event.GetString(), eFMOD_EVENT));
                     }
 
+                    /*
                     const auto& buses = root["buses"].GetArray();
                     for(const auto& bus : buses)
                     {
@@ -58,7 +59,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     for(const auto& snapshot : snapshotsArr)
                     {
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT));
-                    }
+                    }*/
 
                     const auto& banks = root["banks"].GetArray();
                     for(const auto& bnk : banks)

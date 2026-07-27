@@ -14,7 +14,8 @@ namespace AudioEngineFMOD
         static constexpr const char* FMODStudioBankTag = "FMODStudioBankFile";
         static constexpr const char* FMODFileTag = "FMODAudioFile";
 
-        static constexpr const char* FMODStudioEventPathAttribute = "path";
+        static constexpr const char* FMODPathAttribute = "path";
+        static constexpr const char* FMODLocalizedAttribute = "localized";
         static constexpr const char* FMODStudioEventSamplePreloadAttr = "preload_sampledata";
     }
 

@@ -32,6 +32,7 @@ namespace AudioEngineFMOD
         void DataSaved() override;
 
     private:
+        AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;
         using TControlPtr = AZStd::shared_ptr<AudioControls::IAudioSystemControl>;
         using TControlMap = AZStd::unordered_map<AudioControls::CID, TControlPtr>;
         TControlMap m_controls;

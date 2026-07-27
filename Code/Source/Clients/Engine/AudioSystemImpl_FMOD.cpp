@@ -354,7 +354,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
 
     if(audioTriggerNode && azstricmp(audioTriggerNode->name(), XMLTags::FMODEventTag) == 0) {
-        auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODStudioEventPathAttribute, 0, false);
+        auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
         auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODStudioEventSamplePreloadAttr, 0, false);
 
         if(eventNameAttr)

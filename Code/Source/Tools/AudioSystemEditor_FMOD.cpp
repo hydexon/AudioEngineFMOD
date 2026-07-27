@@ -6,17 +6,53 @@
 #include <IAudioSystem.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
-//NOLINTBEGIN
+#include "../Clients/Engine/Common_FMOD.h"
+
 void InitFMODResources()
 {
     Q_INIT_RESOURCE(EditorFMODIcons);
 }
-//NOLINTEND
 
 using namespace AudioControls;
 
 namespace AudioEngineFMOD
 {
+
+TImplControlType TagToType(const AZStd::string_view tag)
+{
+    if(tag == XMLTags::FMODEventTag)
+    {
+        return eFMOD_EVENT;
+    }
+    else if(tag == XMLTags::FMODParameterTag)
+    {
+        return eFMOD_PARAMETER;
+    }
+    else if(tag == XMLTags::FMODStudioBankTag)
+    {
+        return eFMOD_SOUNDBANK;
+    }
+
+    return eFMOD_INVALID;
+}
+
+const AZStd::string_view TypeToTag(const TImplControlType type)
+{
+    switch(type)
+    {
+    case eFMOD_EVENT:
+        return XMLTags::FMODEventTag;
+    case eFMOD_PARAMETER:
+        return XMLTags::FMODParameterTag;
+    case eFMOD_SOUNDBANK:
+        return XMLTags::FMODStudioBankTag;
+    default:
+        break;
+    }
+
+    return "";
+}
+
 
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
 {
@@ -152,14 +188,108 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     if(node)
     {
         AZStd::string_view element(node->name());
-        AZ_UNUSED(element);
+        TImplControlType type = TagToType(element);
+        if(type != AUDIO_IMPL_INVALID_TYPE)
+        {
+            AZStd::string name;
+            AZStd::string_view localized;
 
+            if(auto nameAttr = node->first_attribute(XMLTags::FMODPathAttribute, 0, false);
+                    nameAttr != nullptr)
+            {
+                name = nameAttr->value();
+            }
+
+            if(auto localizedAttr = node->first_attribute(XMLTags::FMODLocalizedAttribute, 0, false);
+                    localizedAttr != nullptr)
+            {
+                localized =  localizedAttr->value();
+            }
+
+            bool isLocalized = AZ::StringFunc::Equal(localized, "true");
+
+            IAudioSystemControl* ctrl = GetControlByName(name, isLocalized);
+            if(!ctrl)
+            {
+                ctrl = CreateControl(SControlDef(name, type));
+                if(ctrl)
+                {
+                    ctrl->SetPlaceholder(true);
+                    ctrl->SetLocalized(isLocalized);
+                }
+            }
+
+            //TODO: Deal with the roughest equivalent of Switch Groups, Switch States,etc.
+
+            if(ctrl)
+            {
+                ctrl->SetConnected(true);
+                ++m_connectionsByID[ctrl->GetId()];
+
+                //TODO: Special IAudioConnection derived if eFMOD_PARAMETER?
+                //      Also deal with Switches and States.
+
+                return AZStd::make_shared<IAudioConnection>(ctrl->GetId());
+            }
+        }
     }
     return nullptr;
 }
 
 AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
 {
+    const IAudioSystemControl* control = GetControl(connection->GetID());
+    if(control)
+    {
+        XmlAllocator& xmlAlloc(AudioControls::s_xmlAllocator);
+        switch(control->GetType())
+        {
+            case eFMOD_EVENT:
+            {
+                auto connectionNode = xmlAlloc.allocate_node(
+                            AZ::rapidxml::node_element,
+                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data()));
+
+                auto pathAttr = xmlAlloc.allocate_attribute(
+                            XMLTags::FMODPathAttribute,
+                            xmlAlloc.allocate_string(control->GetName().c_str())
+                            );
+
+                connectionNode->append_attribute(pathAttr);
+                return connectionNode;
+            }
+            case eFMOD_SOUNDBANK:
+            {
+                auto connectionNode = xmlAlloc.allocate_node(
+                            AZ::rapidxml::node_element,
+                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data()));
+
+                auto pathAttr = xmlAlloc.allocate_attribute(
+                            XMLTags::FMODPathAttribute,
+                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data())
+                            );
+
+                connectionNode->append_attribute(pathAttr);
+
+                if(control->IsLocalized())
+                {
+                    auto locAttr = xmlAlloc.allocate_attribute(
+                                XMLTags::FMODLocalizedAttribute,
+                                xmlAlloc.allocate_string("true")
+                                );
+
+                    connectionNode->append_attribute(locAttr);
+                }
+
+                return connectionNode;
+            }
+            default:
+            {
+                AZ_Warning("FMODAudioSystem", false, "Support to create XML node for '%s' not implemented yet!", TypeToTag(control->GetType()).data());
+                break;
+            }
+        }
+    }
     return nullptr;
 }
 
@@ -201,6 +331,18 @@ AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 void CAudioSystemEditor_FMOD::DataSaved()
 {
 
+}
+
+IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const
+{
+    if (parent) //This is definitively used for the Switch Groups.
+    {
+        AZ::StringFunc::Path::Join(parent->GetName().c_str(), name.c_str(), name);
+    }
+    //TODO: Deal with the localized one.
+    AZ_UNUSED(isLocalized);
+
+    return GetControl(Audio::AudioStringToID<CID>(name.data()));
 }
 
 
