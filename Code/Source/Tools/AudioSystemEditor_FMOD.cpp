@@ -110,14 +110,10 @@ AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioC
         return AudioControls::eACET_TRIGGER;
     case eFMOD_PARAMETER:
         return AudioControls::eACET_RTPC;
-    case eFMOD_LABELEDPARAM:
-        return AudioControls::eACET_SWITCH_STATE;
-    case eFMOD_AUXBUS:
-        return AudioControls::eACET_ENVIRONMENT;
     case eFMOD_SOUNDBANK:
         return AudioControls::eACET_PRELOAD;
-    case eFMOD_SNAPSHOT:
-        return AudioControls::eACET_ENVIRONMENT;
+    default:
+        break;
     }
 
     return AudioControls::eACET_NUM_TYPES;
@@ -131,12 +127,6 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
         return eFMOD_EVENT;
     case AudioControls::eACET_RTPC:
         return eFMOD_PARAMETER;
-    case AudioControls::eACET_SWITCH:
-        return eFMOD_LABELEDPARAM;
-    case AudioControls::eACET_SWITCH_STATE:
-        return eFMOD_SNAPSHOT;
-    case AudioControls::eACET_ENVIRONMENT:
-        return eFMOD_AUXBUS;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
     default:
@@ -147,11 +137,24 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
 {
+    if(middlewareControl)
+    {
+        middlewareControl->SetConnected(true);
+        ++m_connectionsByID[middlewareControl->GetId()];
+
+        return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
+    }
     return nullptr;
 }
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType)
 {
+    if(node)
+    {
+        AZStd::string_view element(node->name());
+        AZ_UNUSED(element);
+
+    }
     return nullptr;
 }
 

@@ -37,7 +37,7 @@ function outputAllBanksEvents()
     var outputPath = studio.project.filePath;
     var projectName = outputPath.substr(outputPath.lastIndexOf("/") + 1, outputPath.length);
     projectName =  projectName.substring(0, projectName.lastIndexOf('.'));
-    outputPath  = outputPath.substr(0, outputPath.lastIndexOf("/") + 1) + 'FMODStudioInfoData.json';
+    outputPath  = outputPath.substr(0, outputPath.lastIndexOf("/") + 1) + 'FMODProjectInfo.json';
     console.log(outputPath);
 
     var allbanks  = studio.project.model.Bank.findInstances({includeDerivedTypes: true});
@@ -69,7 +69,8 @@ function outputAllBanksEvents()
     allParams.forEach(function(ps) {
         params.push({
             path: ps.getPath(),
-            labels: ps.parameter.enumerationLabels
+            labels: ps.parameter.enumerationLabels,
+            isGlobal: ps.parameter.isGlobal
         });
     });
 

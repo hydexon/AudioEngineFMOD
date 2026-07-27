@@ -60,6 +60,27 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT));
                     }
 
+                    const auto& banks = root["banks"].GetArray();
+                    for(const auto& bnk : banks)
+                    {
+                        const auto& bank = bnk.GetObject();
+                        m_audioSystemImpl->CreateControl(
+                                    AudioControls::SControlDef(
+                                        bank["name"].GetString(),
+                                        eFMOD_SOUNDBANK,
+                                        bank["isLocalized"].GetBool()
+                                        )
+                                    );
+                    }
+
+                    const auto& params = root["parameters"].GetArray();
+                    for(const auto& param : params)
+                    {
+                        const auto& obj = param.GetObject();
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(obj["path"].GetString(),eFMOD_PARAMETER));
+                    }
+
+
                 }
             }
             fileIO->Close(handle);
