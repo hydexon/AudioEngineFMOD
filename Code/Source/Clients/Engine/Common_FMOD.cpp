@@ -19,9 +19,9 @@ namespace AudioEngineFMOD
     {
         return {
             .position = AzToFMODVector(pos),
+            .velocity = AzToFMODVector(vel),
             .forward  = AzToFMODVector(fw),
             .up       = AzToFMODVector(up),
-            .velocity = AzToFMODVector(vel)
         };
     }
 

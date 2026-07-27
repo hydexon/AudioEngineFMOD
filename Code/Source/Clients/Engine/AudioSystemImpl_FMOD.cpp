@@ -6,10 +6,10 @@
 #include "ConfigFMOD.h"
 #include "fmod_errors.h"
 
+#include <ATLEntityData.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/algorithm.h>
 #include <fmod.hpp>
-
 
 using namespace Audio;
 
@@ -159,7 +159,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
         return EAudioRequestStatus::Success;
     }
 
-    return EAudioRequestStatus::Failure;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *objectData, const char *objectName) {
@@ -208,26 +208,26 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerSync(IATLAudioObjectDa
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerAsync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData) {
-    return EAudioRequestStatus::Failure;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync(IATLAudioObjectData *pAudioObjectData, const IATLTriggerImplData *pTriggerData, IATLEventData *pEventData) {
-    return EAudioRequestStatus::Failure;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *tventData, const SATLSourceData *sourceData) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *objectData) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objectData, const SATLWorldPosition &worldPosition) {
@@ -257,12 +257,12 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetMultiplePositions(IATLAudioObjectDa
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData, float value) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
@@ -321,24 +321,24 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {
-    // TODO: Implement this pure virtual method.
     return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntryInfo *audioFileEntry) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    AZ_Info("FMODAudioSystem", "Requested RegisterInMemoryFile: %s", audioFileEntry->sFileName);
+    return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEntryInfo *audioFileEntry) {
     // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    return EAudioRequestStatus::Success;
 
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml::xml_node<char> *audioFileEntryNode, SATLAudioFileEntryInfo *fileEntryInfo) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::None;
+    AZ_Info("FMODAudioSystem", "Entered ParseAudioFileEntry");
+
+    return EAudioRequestStatus::Success;
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldAudioFileEntryData) {
@@ -346,7 +346,7 @@ void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldA
 }
 
 const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo) {
-    // TODO: Implement this pure virtual method.
+    AZ_Info("FMODAudioSystem", "Trying to access GetAudioFileLocation: %s", fileEntryInfo->sFileName);
     return nullptr;
 }
 
@@ -355,12 +355,12 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
 
     if(audioTriggerNode && azstricmp(audioTriggerNode->name(), XMLTags::FMODEventTag) == 0) {
         auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
-        auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODStudioEventSamplePreloadAttr, 0, false);
+        auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODSamplePreloadAttr, 0, false);
 
         if(eventNameAttr)
         {
             const char* eventPath = eventNameAttr->value();
-            AZStd::string eventURI = AZStd::string::format("event:/%s", eventPath);
+            AZStd::string eventURI = AZStd::string::format("%s", eventPath);
 
             FMOD::Studio::EventDescription* desc = nullptr;
             FMOD_RESULT result = studioSystem->getEvent(eventURI.c_str(), &desc);
@@ -473,16 +473,20 @@ const char * const AudioSystemImpl_FMOD::GetImplementationNameString() const {
 
 void AudioSystemImpl_FMOD::GetMemoryInfo(SAudioImplMemoryInfo &memoryInfo) const {
     // TODO: Implement this pure virtual method.
-
+    memoryInfo.nPrimaryPoolSize = AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().Capacity();
+    memoryInfo.nPrimaryPoolUsedSize =
+            memoryInfo.nPrimaryPoolSize - AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().NumAllocatedBytes();
+    memoryInfo.nPrimaryPoolAllocations = 0;
+    memoryInfo.nSecondaryPoolSize = 0;
+    memoryInfo.nSecondaryPoolUsedSize = 0;
+    memoryInfo.nSecondaryPoolAllocations = 0;
 }
 
 AZStd::vector<AudioImplMemoryPoolInfo> AudioSystemImpl_FMOD::GetMemoryPoolInfo() {
-    // TODO: Implement this pure virtual method.
     return AZStd::vector<AudioImplMemoryPoolInfo>();
 }
 
 bool AudioSystemImpl_FMOD::CreateAudioSource(const SAudioInputConfig &sourceConfig) {
-    // TODO: Implement this pure virtual method.
     return false;
 }
 
@@ -511,7 +515,43 @@ void AudioSystemImpl_FMOD::OnAudioSystemUnmuteAll() {
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
-    // TODO: Implement this pure virtual method.
+
+    //Unload the Banks.
+    if(m_masterBank)
+    {
+        FMOD_RESULT r = m_masterBank->unload();
+        if(r != FMOD_OK)
+        {
+            AZ_Error("FMODAudioSystem", false, "Error trying to unload Master.bank for AudioSystemRefresh!: %s", FMOD_ErrorString(r));
+        }
+    }
+
+    if(m_masterStringsBank)
+    {
+        FMOD_RESULT r = m_masterStringsBank->unload();
+        if(r != FMOD_OK)
+        {
+            AZ_Error("FMODAudioSystem", false, "Error trying to unload Master.strings.bank for AudioSystemRefresh!: %s", FMOD_ErrorString(r));
+        }
+    }
+
+    //Re-load the banks again.
+
+    //Load the Master Banks:
+    FMOD_RESULT bankResult = studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
+    if(bankResult != FMOD_OK)
+    {
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %s", FMOD_ErrorString(bankResult));
+        m_masterBank = nullptr;
+    }
+
+    bankResult = studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
+    if(bankResult != FMOD_OK)
+    {
+        AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %s", FMOD_ErrorString(bankResult));
+        m_masterStringsBank = nullptr;
+    }
+
 }
 
 void AudioSystemImpl_FMOD::StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData *sndObj)

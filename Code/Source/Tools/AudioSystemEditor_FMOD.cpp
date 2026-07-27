@@ -73,6 +73,8 @@ void CAudioSystemEditor_FMOD::Reload()
     }
 
     m_loader.Load(this);
+
+    m_connectionsByID.clear();
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const AudioControls::SControlDef &controlDefinition)
@@ -266,7 +268,7 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
                 auto pathAttr = xmlAlloc.allocate_attribute(
                             XMLTags::FMODPathAttribute,
-                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data())
+                            xmlAlloc.allocate_string(control->GetName().c_str())
                             );
 
                 connectionNode->append_attribute(pathAttr);

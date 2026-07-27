@@ -16,7 +16,7 @@ namespace AudioEngineFMOD
 
         static constexpr const char* FMODPathAttribute = "path";
         static constexpr const char* FMODLocalizedAttribute = "localized";
-        static constexpr const char* FMODStudioEventSamplePreloadAttr = "preload_sampledata";
+        static constexpr const char* FMODSamplePreloadAttr = "preload_sampledata";
     }
 
     namespace Utils

@@ -16,6 +16,11 @@
                     "glob": "*.bank",
                     "params": "copy",
                     "server": "skip"
+                },
+                "RC FMODAudioControls": {
+                    "pattern": "(.*libs\\\\/gameaudio\\\\/fmod\\\\/).*\\.xml",
+                    "params": "copy",
+                    "productAssetType": "{D59B6A2E-1BC0-488C-959B-CF27E784D1D7}"
                 }
             }
         }
