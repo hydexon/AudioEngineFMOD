@@ -7,7 +7,7 @@ namespace AudioEngineFMOD
 {
     namespace Constants
     {
-        static constexpr const char DefaultFMODBanksPath[] = "Assets/Audio/FMOD/Banks/Desktop/"; //TODO: Get rid of the Desktop once we figure out how to properly set platforms.
+        static constexpr const char DefaultFMODBanksPath[] = "Assets/Audio/FMOD/Banks/";
         static constexpr const char ConfigFile[] = "FMOD_Config.json";
         static constexpr const char BankExtensionp[] = ".bank";
         static constexpr const char MasterBank[] = "Master.bank";

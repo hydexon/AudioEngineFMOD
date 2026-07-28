@@ -64,7 +64,7 @@ namespace AudioEngineFMOD
         }
 
         AZ_Info("FMODAudioSystem", "AudioEngineFMOD AssetPlatform: %s", assetPlatform.c_str());
-        m_engineFMOD = AZStd::make_unique<AudioSystemImpl_FMOD>();
+        m_engineFMOD = AZStd::make_unique<AudioSystemImpl_FMOD>(assetPlatform.c_str());
         if(m_engineFMOD)
         {
             AZ_Info("FMODAudioSystem", "AudioEngineFMOD Initialized!");

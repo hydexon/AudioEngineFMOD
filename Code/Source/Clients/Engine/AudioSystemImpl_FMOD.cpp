@@ -35,13 +35,18 @@ namespace AudioEngineFMOD
     }
 
 
-AudioSystemImpl_FMOD::AudioSystemImpl_FMOD()
-    : studioSystem(nullptr)
+AudioSystemImpl_FMOD::AudioSystemImpl_FMOD(const char* assetPlatformName)
+    : m_studioSystem(nullptr)
     , m_masterBank(nullptr)
     , m_masterStringsBank(nullptr)
 {
     AudioSystemImplementationRequestBus::Handler::BusConnect();
     AudioSystemImplementationNotificationBus::Handler::BusConnect();
+
+    if(assetPlatformName && assetPlatformName[0] != '\0')
+    {
+        m_assetPlatform = assetPlatformName;
+    }
 }
 
 AudioSystemImpl_FMOD::~AudioSystemImpl_FMOD()
@@ -53,7 +58,7 @@ AudioSystemImpl_FMOD::~AudioSystemImpl_FMOD()
 void AudioSystemImpl_FMOD::Update(float updateIntervalMS) {
     // TODO: Implement this pure virtual method.
     AZ_PROFILE_FUNCTION(Audio);
-    studioSystem->update();
+    m_studioSystem->update();
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
@@ -66,7 +71,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
                 MemCallbacks::Free
                 );
 
-    FMOD_RESULT result = FMOD::Studio::System::create(&studioSystem);
+    FMOD_RESULT result = FMOD::Studio::System::create(&m_studioSystem);
 
     if(result != FMOD_OK)
     {
@@ -75,17 +80,17 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     }
 
     FMOD_STUDIO_ADVANCEDSETTINGS studioSettings;
-    studioSystem->getAdvancedSettings(&studioSettings);
+    m_studioSystem->getAdvancedSettings(&studioSettings);
 
     studioSettings.commandqueuesize  = CVars::s_FMODStudio_CommandQueueSize;
     studioSettings.studioupdateperiod = CVars::s_FMODStudio_StudioUpdatePeriod;
     studioSettings.idlesampledatapoolsize = CVars::s_FMODStudio_IdleSampleDataPoolSize;
     studioSettings.streamingscheduledelay = CVars::s_FMODStudio_StreamingScheduleDelay;
 
-    studioSystem->setAdvancedSettings(&studioSettings);
+    m_studioSystem->setAdvancedSettings(&studioSettings);
 
     FMOD::System* coreSystem = nullptr;
-    studioSystem->getCoreSystem(&coreSystem);
+    m_studioSystem->getCoreSystem(&coreSystem);
 
     FMOD_ADVANCEDSETTINGS coreSettings;
     coreSettings.profilePort = CVars::s_FMODCore_ProfilePort;
@@ -106,7 +111,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
                 -1
                 );
 
-    result = studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
+    result = m_studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
                                       CVars::s_FMODStudio_EnableProfiling ? FMOD_STUDIO_INIT_LIVEUPDATE : FMOD_STUDIO_INIT_NORMAL,
                                       FMOD_INIT_NORMAL,
                                       nullptr);
@@ -120,7 +125,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     }
 
     //Load the Master Banks:
-    FMOD_RESULT bankResult = studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
+    FMOD_RESULT bankResult = m_studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
     if(bankResult != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %s", FMOD_ErrorString(bankResult));
@@ -128,7 +133,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    bankResult = studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
+    bankResult = m_studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
     if(bankResult != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %s", FMOD_ErrorString(bankResult));
@@ -136,13 +141,13 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    studioSystem->setNumListeners(3); //@HACK: No idea why O3DE is trying to set 3 listeners.
+    m_studioSystem->setNumListeners(3); //@HACK: No idea why O3DE is trying to set 3 listeners.
 
     return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ShutDown() {
-    studioSystem->release();
+    m_studioSystem->release();
     return EAudioRequestStatus::Success;
 }
 
@@ -152,7 +157,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Release() {
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
     FMOD::Studio::Bus* masterBus = nullptr;
-    studioSystem->getBus("bus:/", &masterBus);
+    m_studioSystem->getBus("bus:/", &masterBus);
     if(masterBus)
     {
         masterBus->stopAllEvents(FMOD_STUDIO_STOP_ALLOWFADEOUT);
@@ -314,8 +319,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
                                                                           newPosition.GetUpVec(),
                                                                           ldata->velocity);
 
-    studioSystem->setListenerAttributes(ldata->listenerIndex, &listenerAttributes);
-    studioSystem->setListenerWeight(ldata->listenerIndex, ldata->weight);
+    m_studioSystem->setListenerAttributes(ldata->listenerIndex, &listenerAttributes);
+    m_studioSystem->setListenerWeight(ldata->listenerIndex, ldata->weight);
 
     return EAudioRequestStatus::Success;
 }
@@ -339,7 +344,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
 
         if(implFileEntryData)
         {
-            FMOD_RESULT bankResult = studioSystem->loadBankFile(fullBank.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &implFileEntryData->pFMODBank);
+            FMOD_RESULT bankResult = m_studioSystem->loadBankFile(fullBank.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &implFileEntryData->pFMODBank);
             if(bankResult != FMOD_OK)
             {
                 AZ_Warning("FMODAudioSystem", false,"Failed to open bank: %s, FMOD Error: %s", fullBank.c_str(), FMOD_ErrorString(bankResult));
@@ -441,7 +446,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
             AZStd::string eventURI = AZStd::string::format("%s", eventPath);
 
             FMOD::Studio::EventDescription* desc = nullptr;
-            FMOD_RESULT result = studioSystem->getEvent(eventURI.c_str(), &desc);
+            FMOD_RESULT result = m_studioSystem->getEvent(eventURI.c_str(), &desc);
             if(result == FMOD_OK && desc != nullptr)
             {
                 newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (), Audio::AudioImplAllocator);
@@ -510,7 +515,7 @@ IATLListenerData *AudioSystemImpl_FMOD::NewAudioListenerObjectData(TATLIDType ob
     auto newListenerData = azcreate(SATLListenerData_FMOD, (aznumeric_cast<int>(objectId)), Audio::AudioImplAllocator);
     if(newListenerData)
     {
-        studioSystem->getListenerWeight(newListenerData->listenerIndex, &newListenerData->weight);
+        m_studioSystem->getListenerWeight(newListenerData->listenerIndex, &newListenerData->weight);
     }
     return newListenerData;
 }
@@ -616,19 +621,40 @@ void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
     //Re-load the banks again.
 
     //Load the Master Banks:
-    FMOD_RESULT bankResult = studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
+    FMOD_RESULT bankResult = m_studioSystem->loadBankFile(Constants::MasterBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterBank);
     if(bankResult != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.bank: %s", FMOD_ErrorString(bankResult));
         m_masterBank = nullptr;
     }
 
-    bankResult = studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
+    bankResult = m_studioSystem->loadBankFile(Constants::MasterStringsBank, FMOD_STUDIO_LOAD_BANK_NORMAL, &m_masterStringsBank);
     if(bankResult != FMOD_OK)
     {
         AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %s", FMOD_ErrorString(bankResult));
         m_masterStringsBank = nullptr;
     }
+
+}
+
+void AudioSystemImpl_FMOD::SetBankPaths()
+{
+    //Default:
+    // "Assets/Audio/FMOD/"
+    AZStd::string bankPath = Constants::DefaultFMODBanksPath;
+    //TODO: Finish this, think a better simpler mechanism to determine bank paths:
+    // --                                 FMOD Banks Folder
+    // assetPlatform -> windows   --|
+    //                  linux     --|---- Desktop
+    //                  macOS     --|
+    //
+    //                  Android   --|
+    //                              |---- Mobile
+    //                  iOS/tvOS  --|
+    //
+    //                  (And soon consoles)
+
+
 
 }
 

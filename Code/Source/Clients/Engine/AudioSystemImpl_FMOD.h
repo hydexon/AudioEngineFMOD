@@ -13,7 +13,7 @@ namespace AudioEngineFMOD
     public:
         AUDIO_IMPL_CLASS_ALLOCATOR(AudioSystemImpl_FMOD);
 
-        explicit AudioSystemImpl_FMOD();
+        explicit AudioSystemImpl_FMOD(const char* assetPlatformName);
         ~AudioSystemImpl_FMOD() override;
 
         void Update(float updateIntervalMS) override;
@@ -190,14 +190,16 @@ namespace AudioEngineFMOD
         void OnAudioSystemRefresh() override;
 
     protected:
-        FMOD::Studio::System* studioSystem;
+        AZStd::string m_assetPlatform;
+        FMOD::Studio::System* m_studioSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;
 
         AZStd::unordered_map<AZStd::string, FMOD::Studio::EventDescription*> m_preparedEventDescriptions;
+
+        void SetBankPaths();
         void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
         void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
-
     };
 
 }
