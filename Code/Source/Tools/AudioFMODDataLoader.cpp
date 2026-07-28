@@ -3,6 +3,7 @@
 #include <IAudioSystemControl.h>
 #include "AudioSystemEditor_FMOD.h"
 #include "AudioSystemCtrl_FMOD.h"
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/JSON/document.h>
@@ -66,6 +67,11 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     for(const auto& bnk : banks)
                     {
                         const auto& bank = bnk.GetObject();
+                        if (AZ::StringFunc::Equal(bank["name"].GetString(), "Master")) //Skip the master bank, it always will be loaded internally.
+                        {
+                            continue;
+                        }
+
                         const auto bankNameWithExt = AZStd::string::format("%s.bank", bank["name"].GetString());
                         m_audioSystemImpl->CreateControl(
                                     AudioControls::SControlDef(
