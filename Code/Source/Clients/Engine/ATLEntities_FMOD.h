@@ -33,4 +33,13 @@ namespace AudioEngineFMOD
         float weight = 1.0f;
     };
 
+    struct SATLAudioFileEntryData_FMOD : public Audio::IATLAudioFileEntryData
+    {
+        SATLAudioFileEntryData_FMOD()
+            : pFMODBank(nullptr)
+        {}
+
+        FMOD::Studio::Bank* pFMODBank;
+    };
+
 }

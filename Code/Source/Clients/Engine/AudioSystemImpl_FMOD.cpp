@@ -325,28 +325,106 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectD
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntryInfo *audioFileEntry) {
-    AZ_Info("FMODAudioSystem", "Requested RegisterInMemoryFile: %s", audioFileEntry->sFileName);
-    return EAudioRequestStatus::Success;
+
+    EAudioRequestStatus result = EAudioRequestStatus::Success;
+    //NOTE: i have the slight belief that SATLAudioFileEntryInfo loads the bank file data into memory
+    //      in behalf of the AudioSystem, but probably will fail because only have the bank name.
+    //      So is better idea to make AudioSystem load it for us and use studioSystem->loadBankMemory instead?
+    if(audioFileEntry)
+    {
+        //Build entry path:
+        //@TODO: Localized banks.
+        auto fullBank = AZStd::string::format("%s.bank", audioFileEntry->sFileName);
+        auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
+
+        if(implFileEntryData)
+        {
+            FMOD_RESULT bankResult = studioSystem->loadBankFile(fullBank.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &implFileEntryData->pFMODBank);
+            if(bankResult != FMOD_OK)
+            {
+                AZ_Warning("FMODAudioSystem", false,"Failed to open bank: %s, FMOD Error: %s", fullBank.c_str(), FMOD_ErrorString(bankResult));
+                implFileEntryData->pFMODBank = nullptr;
+                result = EAudioRequestStatus::Failure;
+            }
+        }
+    }
+
+    return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEntryInfo *audioFileEntry) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::Success;
+
+    EAudioRequestStatus result = EAudioRequestStatus::Success;
+
+    if(audioFileEntry)
+    {
+        auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
+        if(implFileEntryData)
+        {
+            FMOD_RESULT bankResult = implFileEntryData->pFMODBank->unload();
+            if(bankResult != FMOD_OK)
+            {
+                AZ_Warning("FMODAudioSystem", false, "FMOD::Studio::Bank::Unload returned %s", FMOD_ErrorString(bankResult));
+                result = EAudioRequestStatus::Failure;
+            }
+        }
+    }
+
+    return result;
 
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml::xml_node<char> *audioFileEntryNode, SATLAudioFileEntryInfo *fileEntryInfo) {
-    AZ_Info("FMODAudioSystem", "Entered ParseAudioFileEntry");
 
-    return EAudioRequestStatus::Success;
+    EAudioRequestStatus result = EAudioRequestStatus::Failure;
+    if(audioFileEntryNode && azstricmp(audioFileEntryNode->name(), XMLTags::FMODStudioBankTag) == 0 && fileEntryInfo)
+    {
+        const char* audioFileEntryName = nullptr;
+        auto bankPathAttr = audioFileEntryNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
+        if(bankPathAttr)
+        {
+            audioFileEntryName = bankPathAttr->value();
+        }
+
+        bool isLocalized = false;
+        auto localizedAttr = audioFileEntryNode->first_attribute(XMLTags::FMODLocalizedAttribute, 0, false);
+        if(localizedAttr)
+        {
+            if(azstricmp(localizedAttr->value(), "true") == 0)
+            {
+                isLocalized = true;
+            }
+        }
+
+
+        if(audioFileEntryName && audioFileEntryName[0] != '\0')
+        {
+            fileEntryInfo->bLocalized = isLocalized;
+            fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
+            fileEntryInfo->sFileName = audioFileEntryName;
+            fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (), Audio::AudioImplAllocator);
+            result = EAudioRequestStatus::Success;
+        }
+        else
+        {
+            fileEntryInfo->sFileName = 0;
+            fileEntryInfo->nMemoryBlockAlignment = 0;
+            fileEntryInfo->pImplData = nullptr;
+        }
+    }
+
+    return result;
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldAudioFileEntryData) {
-    // TODO: Implement this pure virtual method.
+    azdestroy(oldAudioFileEntryData, Audio::AudioImplAllocator, SATLAudioFileEntryData_FMOD);
 }
 
 const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo) {
-    AZ_Info("FMODAudioSystem", "Trying to access GetAudioFileLocation: %s", fileEntryInfo->sFileName);
+    auto path = AZStd::string::format("%s.bank", fileEntryInfo->sFileName);
+    AZ_Info("FMODAudioSystem", "Trying to access GetAudioFileLocation: %s", path.c_str());
+
+
     return nullptr;
 }
 
