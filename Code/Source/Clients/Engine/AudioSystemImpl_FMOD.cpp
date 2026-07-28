@@ -335,22 +335,25 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectD
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntryInfo *audioFileEntry) {
 
     EAudioRequestStatus result = EAudioRequestStatus::Success;
-    //NOTE: i have the slight belief that SATLAudioFileEntryInfo loads the bank file data into memory
-    //      in behalf of the AudioSystem, but probably will fail because only have the bank name.
-    //      So is better idea to make AudioSystem load it for us and use studioSystem->loadBankMemory instead?
     if(audioFileEntry)
     {
-        //Build entry path:
         //@TODO: Localized banks.
-        auto fullBank = AZStd::string::format("%s.bank", audioFileEntry->sFileName);
         auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
 
         if(implFileEntryData)
         {
-            FMOD_RESULT bankResult = m_studioSystem->loadBankFile(fullBank.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &implFileEntryData->pFMODBank);
+            FMOD_RESULT bankResult = m_studioSystem->loadBankMemory(static_cast<const char*>(audioFileEntry->pFileData),
+                                                                    aznumeric_cast<int>(audioFileEntry->nSize),
+                                                                    FMOD_STUDIO_LOAD_MEMORY_POINT, //Match Wwise's AK::SoundEngine::LoadBankMemoryView behavior.
+                                                                    FMOD_STUDIO_LOAD_BANK_NORMAL,
+                                                                    &implFileEntryData->pFMODBank);
+
             if(bankResult != FMOD_OK)
             {
-                AZ_Warning("FMODAudioSystem", false,"Failed to open bank: %s, FMOD Error: %s", fullBank.c_str(), FMOD_ErrorString(bankResult));
+                AZ_Warning("FMODAudioSystem", false,
+                           "Failed to load bank from memory: %s, FMOD Error: %s",
+                           audioFileEntry->sFileName, FMOD_ErrorString(bankResult));
+
                 implFileEntryData->pFMODBank = nullptr;
                 result = EAudioRequestStatus::Failure;
             }
@@ -429,9 +432,10 @@ void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldA
 }
 
 const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo) {
-    auto path = AZStd::string::format("%s.bank", fileEntryInfo->sFileName);
-    AZ_Info("FMODAudioSystem", "Trying to access GetAudioFileLocation: %s", path.c_str());
-
+    if(fileEntryInfo)
+    {
+        return m_fmodBankPath.c_str();
+    }
 
     return nullptr;
 }
@@ -670,7 +674,7 @@ void AudioSystemImpl_FMOD::SetBankPaths()
         fmodPlatform = "Mobile";
     }
 
-    AZ_Error("FMODAudioSystem", !fmodPlatform.empty(), "Unable to determine platform (Desktop or Mobile) for FMOD Bank directory.");//NDA Consoles or niche platform?
+    AZ_Error("FMODAudioSystem", !fmodPlatform.empty(), "Unable to determine platform (Desktop or Mobile) for FMOD Bank directory."); //NDA Consoles or niche platform?
 
     AZStd::string platformPath;
 

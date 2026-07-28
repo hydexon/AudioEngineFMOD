@@ -25,19 +25,14 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *userData)
     {
         const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
-        AZ_Info("FMODAudioSystem", "FMOD IO Assets Bank Path: %s", AssetsBankPath.c_str());
-
         auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
 
-        AZ_Info("FMODAudioSystem", "FMOD IO is trying to open: %s", fullFilePath.c_str());
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)
         {
-            AZ_Info("FMODAudioSystem", "FMOD File Requested has size: %d", aznumeric_cast<unsigned int>(fileSize));
             AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
             if(fileIO->Open(fullFilePath.data(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle))
             {
-                AZ_Info("FMODAudioSystem", "FMOD IO Opened this File Successfully!");
                 *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load gigantic bank files (<2GB).
                 AZIOData* IOData = azcreate(AZIOData);
                 IOData->fileSize = fileSize;

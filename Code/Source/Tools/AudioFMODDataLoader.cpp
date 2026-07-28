@@ -22,6 +22,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
 {
     bool failedOpenFile = false;
 
+    AZ_Info("FMODAudioSystem", "Trying to read: %s", infoPath.data());
     if(AZ::IO::FileIOBase::GetInstance()->Exists(infoPath.data()))
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
@@ -65,9 +66,10 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     for(const auto& bnk : banks)
                     {
                         const auto& bank = bnk.GetObject();
+                        const auto bankNameWithExt = AZStd::string::format("%s.bank", bank["name"].GetString());
                         m_audioSystemImpl->CreateControl(
                                     AudioControls::SControlDef(
-                                        bank["name"].GetString(),
+                                        bankNameWithExt.c_str(),
                                         eFMOD_SOUNDBANK,
                                         bank["isLocalized"].GetBool()
                                         )
