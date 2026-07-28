@@ -12,10 +12,18 @@
                     "recursive": 1,
                     "order": 102
                 },
-                "RC CopyFMODBanks": {
-                    "glob": "*.bank",
+                "Exclude FMODProjectInfo": {
+                    "pattern": ".*Assets\\\\/Audio\\\\/FMOD\\\\/FMODProjectInfo\\\\.json"
+                },
+                "RC FMOD Copy Banks for Desktop Platforms": {
+                    "glob": "*/Assets/Audio/FMOD/Banks/Desktop/*.bank",
                     "params": "copy",
-                    "server": "skip"
+                    "mobile": "skip"
+                },
+                "RC FMOD Copy Banks for Mobile Platforms": {
+                    "glob": "*/Assets/Audio/FMOD/Banks/Mobile/*.bank",
+                    "params": "skip",
+                    "mobile": "copy"
                 },
                 "RC FMODAudioControls": {
                     "pattern": "(.*libs\\\\/gameaudio\\\\/fmod\\\\/).*\\.xml",

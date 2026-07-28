@@ -191,6 +191,7 @@ namespace AudioEngineFMOD
 
     protected:
         AZStd::string m_assetPlatform;
+        AZStd::string m_fmodBankPath;
         FMOD::Studio::System* m_studioSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;

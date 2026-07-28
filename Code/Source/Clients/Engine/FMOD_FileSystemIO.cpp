@@ -25,7 +25,10 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *userData)
     {
         const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
+        AZ_Info("FMODAudioSystem", "FMOD IO Assets Bank Path: %s", AssetsBankPath.c_str());
+
         auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
+
         AZ_Info("FMODAudioSystem", "FMOD IO is trying to open: %s", fullFilePath.c_str());
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)
@@ -35,7 +38,7 @@ namespace AudioEngineFMOD
             if(fileIO->Open(fullFilePath.data(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, fileHandle))
             {
                 AZ_Info("FMODAudioSystem", "FMOD IO Opened this File Successfully!");
-                *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load gigantic bank files.
+                *filesize = aznumeric_cast<unsigned int>(fileSize); //We assume we don't load gigantic bank files (<2GB).
                 AZIOData* IOData = azcreate(AZIOData);
                 IOData->fileSize = fileSize;
                 IOData->filename = fullFilePath;
@@ -46,7 +49,7 @@ namespace AudioEngineFMOD
                 return FMOD_OK;
             }
         }
-
+        AZ_Error("FMODAudioSystem", false, "Oops FMOD IO requested file: %s, couldn't be found", fullFilePath.c_str());
         return FMOD_ERR_FILE_NOTFOUND;
     }
 
@@ -82,10 +85,6 @@ namespace AudioEngineFMOD
         AZ::u64 bytesRead64 = 0;
         fileIO->Read(iodata->handle, buffer, aznumeric_cast<AZ::u64>(sizebytes), true, &bytesRead64);
         *bytesRead = aznumeric_cast<unsigned int>(bytesRead64);
-        //const bool readOk = (bytesRead64 == sizebytes);
-        //AZ_Assert(readOk, "Number of bytes read (%llu) for read request doesn't match the requested size (%u)", bytesRead64, aznumeric_cast<AZ::u64>(sizebytes));
-
-        //return readOk ? FMOD_OK : FMOD_ERR_FILE_BAD;
 
         if(bytesRead64 < sizebytes)
         {

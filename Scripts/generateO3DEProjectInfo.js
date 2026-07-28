@@ -59,7 +59,7 @@ function outputAllBanksEvents()
             bnkEvts.push(evt.getPath());
         });
         banks.push({
-            name: bnk.name + '.bank',
+            name: bnk.name,
             isLocalized: bnk.audioTable !== undefined && bnk.audioTable !== null,
             events: bnkEvts
         });

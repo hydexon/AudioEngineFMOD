@@ -6,6 +6,7 @@
 #include "ConfigFMOD.h"
 #include "fmod_errors.h"
 
+#include <AzCore/IO/FileIO.h>
 #include <ATLEntityData.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/algorithm.h>
@@ -110,6 +111,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
             #endif
                 -1
                 );
+
+    SetBankPaths();
 
     result = m_studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
                                       CVars::s_FMODStudio_EnableProfiling ? FMOD_STUDIO_INIT_LIVEUPDATE : FMOD_STUDIO_INIT_NORMAL,
@@ -642,7 +645,6 @@ void AudioSystemImpl_FMOD::SetBankPaths()
     //Default:
     // "Assets/Audio/FMOD/"
     AZStd::string bankPath = Constants::DefaultFMODBanksPath;
-    //TODO: Finish this, think a better simpler mechanism to determine bank paths:
     // --                                 FMOD Banks Folder
     // assetPlatform -> windows   --|
     //                  linux     --|---- Desktop
@@ -654,8 +656,40 @@ void AudioSystemImpl_FMOD::SetBankPaths()
     //
     //                  (And soon consoles)
 
+    AZStd::string fmodPlatform = "";
+    if(AZ::StringFunc::Equal(m_assetPlatform, "pc") ||
+            AZ::StringFunc::Equal(m_assetPlatform, "linux") ||
+            AZ::StringFunc::Equal(m_assetPlatform, "mac"))
+    {
+        fmodPlatform = "Desktop";
+    }
 
+    if(AZ::StringFunc::Equal(m_assetPlatform, "ios") ||
+            AZ::StringFunc::Equal(m_assetPlatform, "android"))
+    {
+        fmodPlatform = "Mobile";
+    }
 
+    AZ_Error("FMODAudioSystem", !fmodPlatform.empty(), "Unable to determine platform (Desktop or Mobile) for FMOD Bank directory.");//NDA Consoles or niche platform?
+
+    AZStd::string platformPath;
+
+    //Assets/Audio/FMOD/Banks/Desktop
+    AZ::StringFunc::AssetDatabasePath::Join(bankPath.c_str(), fmodPlatform.c_str(), platformPath);
+    //Some validation:
+    AZStd::string masterBankPath;
+    AZ::StringFunc::AssetDatabasePath::Join(platformPath.c_str(), Constants::MasterBank, masterBankPath);
+    if(AZ::IO::FileIOBase::GetInstance()->Exists(masterBankPath.c_str()))
+    {
+        if(!platformPath.ends_with(AZ_CORRECT_DATABASE_SEPARATOR))
+        {
+            platformPath.push_back(AZ_CORRECT_DATABASE_SEPARATOR);
+        }
+        bankPath = AZStd::move(platformPath);
+    }
+
+    m_fmodBankPath = bankPath;
+    SetBanksRootPath(m_fmodBankPath);
 }
 
 void AudioSystemImpl_FMOD::StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData *sndObj)
