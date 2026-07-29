@@ -5,6 +5,7 @@
 
 #include <fmod_studio.hpp>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/list.h>
 
 namespace AudioEngineFMOD
 {
@@ -190,15 +191,21 @@ namespace AudioEngineFMOD
         void OnAudioSystemRefresh() override;
 
     protected:
+        static const char* s_defaultFMODLocaleCode;
         AZStd::string m_assetPlatform;
         AZStd::string m_fmodBankPath;
         FMOD::Studio::System* m_studioSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;
 
+        AZStd::string_view m_currentFMODLocale;
+        AZStd::unordered_map<AZStd::string, AZStd::string> m_availableLocales;
+        AZStd::list<AZStd::string> m_loadedLocalizedBanksNames; //Hack to get around
+
         AZStd::unordered_map<AZStd::string, FMOD::Studio::EventDescription*> m_preparedEventDescriptions;
 
         void SetBankPaths();
+        void LoadFMODLocaleMappings();
         void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
         void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
     };

@@ -39,6 +39,8 @@ namespace AudioEngineFMOD
             : pFMODBank(nullptr)
         {}
 
+        ~SATLAudioFileEntryData_FMOD() override {}
+
         FMOD::Studio::Bank* pFMODBank;
     };
 

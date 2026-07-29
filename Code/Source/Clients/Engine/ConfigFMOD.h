@@ -7,9 +7,10 @@ namespace AudioEngineFMOD
 {
     namespace Constants
     {
+        static constexpr const char DefaultFMODRootPath[] = "Assets/Audio/FMOD/";
         static constexpr const char DefaultFMODBanksPath[] = "Assets/Audio/FMOD/Banks/";
-        static constexpr const char ConfigFile[] = "FMOD_Config.json";
-        static constexpr const char BankExtensionp[] = ".bank";
+        static constexpr const char LocaleConfigFile[] = "FMODLocaleConfig.json";
+        static constexpr const char BankExtension[] = ".bank";
         static constexpr const char MasterBank[] = "Master.bank";
         static constexpr const char MasterStringsBank[] = "Master.strings.bank";
     }
@@ -17,24 +18,22 @@ namespace AudioEngineFMOD
     const AZStd::string_view GetFMODBanksRootPath();
     void SetBanksRootPath(const AZStd::string_view path);
 
-#if 0
-    struct FMODConfigurationSettings
+    struct FMODLocaleConfig
     {
-        AZ_TYPE_INFO(FMODConfigurationSettings, "{A74FC07B-3D76-43FC-B25A-8FD9AB293926}");
-        AZ_CLASS_ALLOCATOR(FMODConfigurationSettings, AZ::SystemAllocator);
+        AZ_TYPE_INFO(FMODLocaleConfig, "{A74FC07B-3D76-43FC-B25A-8FD9AB293926}");
+        AZ_CLASS_ALLOCATOR(FMODLocaleConfig, AZ::SystemAllocator);
 
-        struct PlatformMapping
+        struct LocalizationMapping
         {
-            AZ_TYPE_INFO(PlatformMapping, "{7FAD0A3C-B8E3-49B8-82AC-17A1BF93036A}");
-            AZ_CLASS_ALLOCATOR(PlatformMapping, AZ::SystemAllocator);
+            AZ_TYPE_INFO(LocalizationMapping, "{7FAD0A3C-B8E3-49B8-82AC-17A1BF93036A}");
+            AZ_CLASS_ALLOCATOR(LocalizationMapping, AZ::SystemAllocator);
 
-            AZStd::string m_assetPlatform; //O3DE Asset Platform Name (i.e: pc, linux, android,...)
-            AZStd::string m_enginePlatform; //O3DE Engine Platform.
-            AZStd::string m_FMODPlatform; //FMOD Studio Platform names(i.e: Desktop, Mobile, Android, iOS, Switch)
+            AZStd::string m_languageName; //O3DE Language Name: English, Spanish, Japanese, Chinese.
+            AZStd::string m_localeCode; //FMOD Locale Code: EN, ESP, JP, CN
         };
 
-        FMODConfigurationSettings() = default;
-        ~FMODConfigurationSettings() = default;
+        FMODLocaleConfig() = default;
+        ~FMODLocaleConfig() = default;
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -42,7 +41,6 @@ namespace AudioEngineFMOD
         bool Save(const AZStd::string& filePath);
 
         //Serialized Data:
-        AZStd::vector<PlatformMapping> m_platformMappings;
+        AZStd::vector<LocalizationMapping> m_localeMappings;
     };
-#endif
 }
