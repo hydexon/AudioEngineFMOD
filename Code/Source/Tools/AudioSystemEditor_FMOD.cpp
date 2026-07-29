@@ -57,6 +57,7 @@ const AZStd::string_view TypeToTag(const TImplControlType type)
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
 {
     InitFMODResources();
+    m_loader.Load(this);
 }
 
 void CAudioSystemEditor_FMOD::Reload()

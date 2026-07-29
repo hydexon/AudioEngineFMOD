@@ -118,6 +118,13 @@ namespace AudioEngineFMOD
         const char *const
         GetAudioFileLocation(Audio::SATLAudioFileEntryInfo *fileEntryInfo) override;
 
+        Audio::EAudioLocalizationFindMethod
+        GetAudioFileLocalizationFindMethod() override {
+            return Audio::EAudioLocalizationFindMethod::FilenameBased; }
+
+        const char* GetAudioFilenameFixup(
+                Audio::IATLAudioFileEntryData* audioFileEntryData) override;
+
         Audio::IATLTriggerImplData *NewAudioTriggerImplData(
                 const AZ::rapidxml::xml_node<char> *audioTriggerNode) override;
 

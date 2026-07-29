@@ -409,35 +409,35 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             }
         }
 
-        if(isLocalized)
-        {
-            /*
-             * HACK: Due we can't modify audioFileEntry because is a C string reference from the Audio Control XML file
-             *       we're reading from, expected due the Wwise behavior the ATL replicates from, where every localized
-             *       soundbank, audio file has their own localized folder, unlike FMOD's where localized banks has an
-             *       locale code postfix like Dialogue_EN.bank, Dialogue_JP.bank and Dialogue_CN.bank and so on, instead.
-             *
-             *       As a solution we have our own pool of strings handled by this class with the modified strings to locate
-             *       the banks easily without modifying the ATL API or other nastier hacks more than this.
-             */
-            m_loadedLocalizedBanksNames.emplace_back();
-            auto& localizedBankName = m_loadedLocalizedBanksNames.back();
-
-            AZStd::string bankName = audioFileEntryName;
-            AZ::StringFunc::Path::ReplaceExtension(bankName, "");
-
-            localizedBankName = AZStd::string::format("%s_%s.bank", bankName.c_str(), m_currentFMODLocale.data());
-            AZ_Printf("FMODAudioSystem", "New Bank Name for Localized Bank (%s): %s", m_currentFMODLocale.data(), localizedBankName.data());
-
-            audioFileEntryName = localizedBankName.c_str();
-        }
-
         if(audioFileEntryName && audioFileEntryName[0] != '\0')
         {
+            AZStd::string bankBaseName = audioFileEntryName;
+            AZ::StringFunc::Path::ReplaceExtension(bankBaseName, "");
+
+            if(isLocalized)
+            {
+                /*
+                 * HACK: Due we can't modify audioFileEntry because is a C string reference from the Audio Control XML file
+                 *       we're reading from, expected due the Wwise behavior the ATL replicates from, where every localized
+                 *       soundbank, audio file has their own localized folder, unlike FMOD's where localized banks has an
+                 *       locale code postfix like Dialogue_EN.bank, Dialogue_JP.bank and Dialogue_CN.bank and so on, instead.
+                 *
+                 *       As a solution we have our own pool of strings handled by this class with the modified strings to locate
+                 *       the banks easily without modifying the ATL API or other nastier hacks more than this.
+                 */
+                m_loadedLocalizedBanksNames.emplace_back();
+                auto& localizedBankName = m_loadedLocalizedBanksNames.back();
+
+                localizedBankName = AZStd::string::format("%s_%s.bank", bankBaseName.c_str(), m_currentFMODLocale.data());
+                AZ_Printf("FMODAudioSystem", "New Bank Name for Localized Bank (%s): %s", m_currentFMODLocale.data(), localizedBankName.data());
+
+                audioFileEntryName = localizedBankName.c_str();
+            }
+
             fileEntryInfo->bLocalized = isLocalized;
             fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
             fileEntryInfo->sFileName = audioFileEntryName;
-            fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (), Audio::AudioImplAllocator);
+            fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (bankBaseName.c_str()), Audio::AudioImplAllocator);
             result = EAudioRequestStatus::Success;
         }
         else
@@ -462,6 +462,23 @@ const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntry
     }
 
     return nullptr;
+}
+
+const char *AudioSystemImpl_FMOD::GetAudioFilenameFixup(Audio::IATLAudioFileEntryData *audioFileEntryData)
+{
+    const char* result = nullptr;
+    auto* fmodFileData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntryData);
+
+    if(fmodFileData)
+    {
+        m_loadedLocalizedBanksNames.emplace_back();
+        auto& localizedBankName = m_loadedLocalizedBanksNames.back();
+
+        localizedBankName = AZStd::string::format("%s_%s.bank", fmodFileData->m_baseBankName.c_str(), m_currentFMODLocale.data());
+        result = localizedBankName.c_str();
+    }
+
+    return result;
 }
 
 IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode) {
