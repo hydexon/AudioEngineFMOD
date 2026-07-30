@@ -359,9 +359,20 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
                 implFileEntryData->pFMODBank = nullptr;
                 result = EAudioRequestStatus::Failure;
             }
+            else
+            {
+                if(implFileEntryData->m_loadSampleData)
+                {
+                    if(FMOD_RESULT loadResult = implFileEntryData->pFMODBank->loadSampleData(); loadResult != FMOD_OK)
+                    {
+                        AZ_Error("FMODAudioSystem", false, "Unable to load sample data for bank '%s', FMOD Error: %s",
+                                 audioFileEntry->sFileName, FMOD_ErrorString(loadResult));
+                        result = EAudioRequestStatus::PartialSuccess;
+                    }
+                }
+            }
         }
     }
-
     return result;
 }
 
@@ -409,6 +420,16 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             }
         }
 
+        bool loadSampleData = false;
+        auto loadSampleDataAttr = audioFileEntryNode->first_attribute(XMLTags::FMODSamplePreloadAttr, 0, false);
+        if(loadSampleDataAttr)
+        {
+            if(azstricmp(loadSampleDataAttr->value(), "true") == 0)
+            {
+                loadSampleData = true;
+            }
+        }
+
         if(audioFileEntryName && audioFileEntryName[0] != '\0')
         {
             AZStd::string bankBaseName = audioFileEntryName;
@@ -437,7 +458,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             fileEntryInfo->bLocalized = isLocalized;
             fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
             fileEntryInfo->sFileName = audioFileEntryName;
-            fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (bankBaseName.c_str()), Audio::AudioImplAllocator);
+            fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (bankBaseName.c_str(), loadSampleData), Audio::AudioImplAllocator);
             result = EAudioRequestStatus::Success;
         }
         else

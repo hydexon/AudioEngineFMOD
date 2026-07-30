@@ -30,6 +30,7 @@ namespace AudioEngineFMOD
         AZStd::string GetName() const override;
         AZ::IO::FixedMaxPath GetDataPath() const override;
         void DataSaved() override;
+        QWidget* CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, AudioControls::EACEControlType atlControlType) override;
 
     private:
         AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;

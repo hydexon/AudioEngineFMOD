@@ -35,13 +35,15 @@ namespace AudioEngineFMOD
 
     struct SATLAudioFileEntryData_FMOD : public Audio::IATLAudioFileEntryData
     {
-        SATLAudioFileEntryData_FMOD(const char* bankBaseName)
+        SATLAudioFileEntryData_FMOD(const char* bankBaseName, bool loadSampleData)
             : pFMODBank(nullptr)
             , m_baseBankName(bankBaseName)
+            , m_loadSampleData(loadSampleData)
         {}
 
         ~SATLAudioFileEntryData_FMOD() override {}
 
+        bool m_loadSampleData;
         AZStd::string m_baseBankName;
         FMOD::Studio::Bank* pFMODBank;
     };

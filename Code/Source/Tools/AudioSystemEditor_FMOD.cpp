@@ -7,6 +7,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 #include "../Clients/Engine/Common_FMOD.h"
+#include "AudioConnections.h"
 
 void InitFMODResources()
 {
@@ -181,7 +182,13 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
         middlewareControl->SetConnected(true);
         ++m_connectionsByID[middlewareControl->GetId()];
 
-        return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
+        switch(middlewareControl->GetType())
+        {
+        case eFMOD_SOUNDBANK:
+            return AZStd::make_shared<CFMODBankConnection>(middlewareControl->GetId());
+        default:
+            return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
+        }
     }
     return nullptr;
 }
@@ -231,6 +238,20 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
 
                 //TODO: Special IAudioConnection derived if eFMOD_PARAMETER?
                 //      Also deal with Switches and States.
+                switch(atlControlType)
+                {
+                    case AudioControls::eACET_PRELOAD: {
+                        auto conn = AZStd::make_shared<CFMODBankConnection>(ctrl->GetId());
+                        if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr); lsdAttr != nullptr)
+                        {
+                            AZStd::string_view lsdStr = lsdAttr->value();
+                            bool isLsd = AZ::StringFunc::Equal(lsdStr, "true"); //Not the acid.
+                            conn->loadSampleData = isLsd;
+                        }
+                        return conn;
+                    }
+                    default: break;
+                }
 
                 return AZStd::make_shared<IAudioConnection>(ctrl->GetId());
             }
@@ -259,6 +280,7 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
                             );
 
                 connectionNode->append_attribute(pathAttr);
+
                 return connectionNode;
             }
             case eFMOD_SOUNDBANK:
@@ -283,6 +305,12 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
                     connectionNode->append_attribute(locAttr);
                 }
+                auto conn = static_cast<const CFMODBankConnection*>(connection.get());
+                auto preloadSampleDataAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSamplePreloadAttr,
+                                                                         xmlAlloc.allocate_string(
+                                                                             conn->loadSampleData ? "true" : "false"
+                                                                             ));
+                connectionNode->append_attribute(preloadSampleDataAttr);
 
                 return connectionNode;
             }
@@ -334,6 +362,25 @@ AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 void CAudioSystemEditor_FMOD::DataSaved()
 {
 
+}
+
+QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, AudioControls::EACEControlType atlControlType)
+{
+    if(!connection)
+        return nullptr;
+
+    IAudioSystemControl* control = GetControl(connection->GetID());
+    if(!control)
+        return nullptr;
+
+    switch(control->GetType())
+    {
+        case eFMOD_SOUNDBANK:
+            return nullptr;
+        default: break;
+    }
+
+    return nullptr;
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const
