@@ -21,7 +21,6 @@ LoadSampleDataForm::LoadSampleDataForm(AudioControls::TConnectionPtr connection,
     ui->m_cbLoadSampleData->setChecked(conn->loadSampleData);
 
     connect(ui->m_cbLoadSampleData, &QCheckBox::toggled, this, &LoadSampleDataForm::ToggleConnectionFromWidget);
-    AZ_Info("FMODAudioSystem", "Hello Sound Bank CID#:%d", m_connection->GetID())
 }
 
 LoadSampleDataForm::~LoadSampleDataForm()

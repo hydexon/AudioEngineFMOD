@@ -9,6 +9,7 @@
 #include "AudioConnections.h"
 
 #include "ConnectionWidgets/LoadSampleDataForm.h"
+#include "ConnectionWidgets/EventPropertiesForm.h"
 
 void InitFMODResources()
 {
@@ -380,6 +381,9 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
         case eFMOD_SOUNDBANK: {
             return new LoadSampleDataForm(connection);
         }
+
+        case eFMOD_EVENT:
+            return new EventPropertiesForm();
 
         default:
             return nullptr;
