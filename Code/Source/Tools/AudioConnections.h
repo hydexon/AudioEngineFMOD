@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IAudioConnection.h>
+#include <fmod_studio_common.h>
 
 namespace AudioEngineFMOD
 {
@@ -26,13 +27,17 @@ namespace AudioEngineFMOD
     public:
         explicit CFMODEventConnection(AudioControls::CID id)
             : AudioControls::IAudioConnection(id)
+            , m_loadSampleData(false)
+            , m_stopMode(FMOD_STUDIO_STOP_ALLOWFADEOUT)
         {
         }
 
         ~CFMODEventConnection() = default;
         bool HasProperties() override { return true; }
 
-        bool loadSampleData;
+        bool m_loadSampleData;
+        FMOD_STUDIO_STOP_MODE m_stopMode;
+
         //TODO: Enum here to Play or Stop Event.
         //      If Stop Event also show how it should stop.
     };

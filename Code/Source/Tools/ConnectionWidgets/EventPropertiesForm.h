@@ -15,7 +15,7 @@ namespace AudioEngineFMOD
         Q_OBJECT
 
     public:
-        explicit EventPropertiesForm(AudioControls::TConnectionPtr connection, QWidget *parent = nullptr);
+        explicit EventPropertiesForm(AudioControls::TConnectionPtr connection, AudioControls::TImplControlType ctrlType, QWidget *parent = nullptr);
         ~EventPropertiesForm();
 
     signals:
@@ -25,6 +25,7 @@ namespace AudioEngineFMOD
     private:
         Ui::EventPropertiesForm *ui;
         AudioControls::TConnectionPtr m_connection;
+        AudioControls::TImplControlType m_controlType;
     };
 }
 #endif // EVENTPROPERTIESFORM_H

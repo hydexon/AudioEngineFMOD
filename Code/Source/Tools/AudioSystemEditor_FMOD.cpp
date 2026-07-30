@@ -168,7 +168,7 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     switch(atlControlType)
     {
     case AudioControls::eACET_TRIGGER:
-        return eFMOD_EVENT;
+        return eFMOD_EVENT | eFMOD_SNAPSHOT;
     case AudioControls::eACET_RTPC:
         return eFMOD_PARAMETER;
     case AudioControls::eACET_PRELOAD:
@@ -190,6 +190,8 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
         {
         case eFMOD_SOUNDBANK:
             return AZStd::make_shared<CFMODBankConnection>(middlewareControl->GetId());
+        case eFMOD_EVENT:
+            return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
         default:
             return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
         }
@@ -254,6 +256,12 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                         }
                         return conn;
                     }
+                    case eFMOD_EVENT: {
+                        auto conn = AZStd::make_shared<CFMODEventConnection>(ctrl->GetId());
+                        //TODO properties goes here.
+                        return conn;
+                    }
+
                     default: break;
                 }
                 return AZStd::make_shared<IAudioConnection>(ctrl->GetId());
@@ -378,13 +386,11 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
 
     switch(control->GetType())
     {
-        case eFMOD_SOUNDBANK: {
+        case eFMOD_SOUNDBANK:
             return new LoadSampleDataForm(connection);
-        }
-
         case eFMOD_EVENT:
-            return new EventPropertiesForm(connection);
-
+        case eFMOD_SNAPSHOT:
+            return new EventPropertiesForm(connection, control->GetType());
         default:
             return nullptr;
     }
