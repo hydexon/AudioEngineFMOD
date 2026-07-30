@@ -383,7 +383,7 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
         }
 
         case eFMOD_EVENT:
-            return new EventPropertiesForm();
+            return new EventPropertiesForm(connection);
 
         default:
             return nullptr;
