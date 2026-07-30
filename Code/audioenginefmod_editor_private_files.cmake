@@ -10,4 +10,8 @@ set(FILES
     Source/Tools/AudioSystemCtrl_FMOD.cpp
     Source/Tools/AudioSystemCtrl_FMOD.h
     Source/Tools/AudioConnections.h
+    # Connection Widgets.
+    Source/Tools/ConnectionWidgets/LoadSampleDataForm.cpp
+    Source/Tools/ConnectionWidgets/LoadSampleDataForm.h
+    Source/Tools/ConnectionWidgets/LoadSampleDataForm.ui
 )

@@ -132,6 +132,8 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
         NAME ${gem_name}.Editor.Private.Object STATIC
         NAMESPACE Gem
         AUTORCC
+        AUTOUIC
+        AUTOMOC
         FILES_CMAKE
             audioenginefmod_editor_private_files.cmake
         TARGET_PROPERTIES
@@ -140,6 +142,7 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
             PRIVATE
                 Include
                 Source
+                Source/Tools/ConnectionWidgets
         BUILD_DEPENDENCIES
             PUBLIC
                 AZ::AzToolsFramework

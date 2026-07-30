@@ -1,6 +1,5 @@
 #include "AudioSystemEditor_FMOD.h"
 #include "AudioSystemCtrl_FMOD.h"
-#include "../Clients/Engine/ConfigFMOD.h"
 
 #include <AzCore/Utils/Utils.h>
 #include <IAudioSystem.h>
@@ -8,6 +7,8 @@
 
 #include "../Clients/Engine/Common_FMOD.h"
 #include "AudioConnections.h"
+
+#include "ConnectionWidgets/LoadSampleDataForm.h"
 
 void InitFMODResources()
 {
@@ -56,9 +57,11 @@ const AZStd::string_view TypeToTag(const TImplControlType type)
 
 
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
+    : QObject()
 {
     InitFMODResources();
     m_loader.Load(this);
+
 }
 
 void CAudioSystemEditor_FMOD::Reload()
@@ -238,9 +241,9 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
 
                 //TODO: Special IAudioConnection derived if eFMOD_PARAMETER?
                 //      Also deal with Switches and States.
-                switch(atlControlType)
+                switch(type)
                 {
-                    case AudioControls::eACET_PRELOAD: {
+                    case eFMOD_SOUNDBANK: {
                         auto conn = AZStd::make_shared<CFMODBankConnection>(ctrl->GetId());
                         if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr); lsdAttr != nullptr)
                         {
@@ -252,7 +255,6 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                     }
                     default: break;
                 }
-
                 return AZStd::make_shared<IAudioConnection>(ctrl->GetId());
             }
         }
@@ -375,12 +377,13 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
 
     switch(control->GetType())
     {
-        case eFMOD_SOUNDBANK:
-            return nullptr;
-        default: break;
-    }
+        case eFMOD_SOUNDBANK: {
+            return new LoadSampleDataForm(connection);
+        }
 
-    return nullptr;
+        default:
+            return nullptr;
+    }
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const

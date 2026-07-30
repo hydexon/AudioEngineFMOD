@@ -7,13 +7,19 @@
 #include "AudioFMODDataLoader.h"
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
+#include <QObject>
+
 namespace AudioEngineFMOD
 {
-    class CAudioSystemEditor_FMOD : public AudioControls::IAudioSystemEditor
+    class CAudioSystemEditor_FMOD
+            : public QObject
+            , public AudioControls::IAudioSystemEditor
     {
+        Q_OBJECT
+
     public:
         CAudioSystemEditor_FMOD();
-        ~CAudioSystemEditor_FMOD() override = default;
+        ~CAudioSystemEditor_FMOD() = default;
 
         // IAudioSystemEditor interface
         void Reload() override;
