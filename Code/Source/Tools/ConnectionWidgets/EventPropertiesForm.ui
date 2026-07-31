@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,7 +30,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="comboBox">
+         <widget class="QComboBox" name="m_cbAction">
           <item>
            <property name="text">
             <string>Play</string>
@@ -51,7 +51,7 @@
        </layout>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBox">
+       <widget class="QCheckBox" name="m_cbLoadSampleData">
         <property name="text">
          <string>Preload Sample Data</string>
         </property>
@@ -74,7 +74,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="comboBox_2">
+         <widget class="QComboBox" name="m_cbStopMode">
           <item>
            <property name="text">
             <string>Allow Fadeout</string>

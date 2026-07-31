@@ -26,6 +26,9 @@ private slots:
 private:
     Ui::LoadSampleDataForm *ui;
     AudioControls::TConnectionPtr m_connection;
+    bool m_inUpdateWidgetsFromConnection = false;
+
+    void ToggleWidgetsFromConnection();
 };
 
 

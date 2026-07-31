@@ -18,9 +18,10 @@ LoadSampleDataForm::LoadSampleDataForm(AudioControls::TConnectionPtr connection,
     AzQtComponents::CheckBox::applyToggleSwitchStyle(ui->m_cbLoadSampleData);
 
     auto conn = static_cast<CFMODBankConnection*>(m_connection.get());
-    ui->m_cbLoadSampleData->setChecked(conn->loadSampleData);
+    ui->m_cbLoadSampleData->setChecked(conn->m_loadSampleData);
 
     connect(ui->m_cbLoadSampleData, &QCheckBox::toggled, this, &LoadSampleDataForm::ToggleConnectionFromWidget);
+    ToggleWidgetsFromConnection();
 }
 
 LoadSampleDataForm::~LoadSampleDataForm()
@@ -30,13 +31,24 @@ LoadSampleDataForm::~LoadSampleDataForm()
 
 void LoadSampleDataForm::ToggleConnectionFromWidget(bool checked)
 {
-    if(m_connection)
+    if(m_inUpdateWidgetsFromConnection)
         return;
 
     CFMODBankConnection* conn = static_cast<CFMODBankConnection*>(m_connection.get());
-    conn->loadSampleData = checked;
+    conn->m_loadSampleData = checked;
 
     emit PropertiesChanged();
+}
+
+void LoadSampleDataForm::ToggleWidgetsFromConnection()
+{
+    m_inUpdateWidgetsFromConnection = true;
+
+    CFMODBankConnection* conn = static_cast<CFMODBankConnection*>(m_connection.get());
+    ui->m_cbLoadSampleData->setChecked(conn->m_loadSampleData);
+
+    m_inUpdateWidgetsFromConnection = false;
+
 }
 
 } // namespace AudioEngineFMOD

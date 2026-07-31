@@ -252,13 +252,35 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                         {
                             AZStd::string_view lsdStr = lsdAttr->value();
                             bool isLsd = AZ::StringFunc::Equal(lsdStr, "true"); //Not the acid.
-                            conn->loadSampleData = isLsd;
+                            conn->m_loadSampleData = isLsd;
                         }
                         return conn;
                     }
                     case eFMOD_EVENT: {
                         auto conn = AZStd::make_shared<CFMODEventConnection>(ctrl->GetId());
-                        //TODO properties goes here.
+                        if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr);
+                                lsdAttr != nullptr)
+                        {
+                            AZStd::string_view lsdStr = lsdAttr->value();
+                            bool isLsd = AZ::StringFunc::Equal(lsdStr, "true");
+                            conn->m_loadSampleData = isLsd;
+                        }
+
+                        if(auto actionAttr = node->first_attribute(XMLTags::FMODEvtAction);
+                                actionAttr != nullptr)
+                        {
+                            AZStd::string_view actionStr = actionAttr->value();
+                            conn->m_action = AZ::StringFunc::Equal(actionStr, "play") ?
+                                        0 : AZ::StringFunc::Equal(actionStr, "pause") ? 1 : 2;
+                        }
+
+                        if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
+                                stopAttr != nullptr)
+                        {
+                            AZStd::string_view stopModeStr = stopAttr->value();
+                            conn->m_stopMode = AZ::StringFunc::Equal(stopModeStr, "AllowFadeout") ?
+                                        FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE;
+                        }
                         return conn;
                     }
 
@@ -292,6 +314,27 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
                 connectionNode->append_attribute(pathAttr);
 
+                auto conn = static_cast<const CFMODEventConnection*>(connection.get());
+                auto loadSampleDataAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSamplePreloadAttr,
+                                                                      xmlAlloc.allocate_string(
+                                                                          conn->m_loadSampleData ? "true" : "false"));
+
+                connectionNode->append_attribute(loadSampleDataAttr);
+
+                auto evtActionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction,
+                                                                 xmlAlloc.allocate_string(
+                                                                     conn->m_action == 0 ? "play" :
+                                                                                           conn->m_action == 1 ? "paused"
+                                                                                                               : "stop"));
+
+                connectionNode->append_attribute(evtActionAttr);
+
+
+                auto evtStopMode = xmlAlloc.allocate_attribute(XMLTags::FMODStopMode,
+                                                                xmlAlloc.allocate_string(
+                                                                    conn->m_stopMode == FMOD_STUDIO_STOP_ALLOWFADEOUT ? "AllowFadeout" : "Immediate"));
+                connectionNode->append_attribute(evtStopMode);
+
                 return connectionNode;
             }
             case eFMOD_SOUNDBANK:
@@ -319,7 +362,7 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
                 auto conn = static_cast<const CFMODBankConnection*>(connection.get());
                 auto preloadSampleDataAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSamplePreloadAttr,
                                                                          xmlAlloc.allocate_string(
-                                                                             conn->loadSampleData ? "true" : "false"
+                                                                             conn->m_loadSampleData ? "true" : "false"
                                                                              ));
                 connectionNode->append_attribute(preloadSampleDataAttr);
 

@@ -21,11 +21,16 @@ namespace AudioEngineFMOD
     signals:
         void PropertiesChanged();
 
+    private slots:
+        void UpdateConnectionFromWidgets();
 
     private:
         Ui::EventPropertiesForm *ui;
         AudioControls::TConnectionPtr m_connection;
         AudioControls::TImplControlType m_controlType;
+
+        bool m_inUpdateWidgetsFromConnection = false;
+        void UpdateWidgetsFromConnection();
     };
 }
 #endif // EVENTPROPERTIESFORM_H

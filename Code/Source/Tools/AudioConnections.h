@@ -10,14 +10,14 @@ namespace AudioEngineFMOD
     public:
         explicit CFMODBankConnection(AudioControls::CID id)
             : AudioControls::IAudioConnection(id)
-            , loadSampleData(false)
+            , m_loadSampleData(false)
         {
         }
 
         ~CFMODBankConnection() = default;
 
         bool HasProperties() override { return true; }
-        bool loadSampleData;
+        bool m_loadSampleData;
     };
 
     //TODO: Snapshot Connection?
@@ -29,12 +29,14 @@ namespace AudioEngineFMOD
             : AudioControls::IAudioConnection(id)
             , m_loadSampleData(false)
             , m_stopMode(FMOD_STUDIO_STOP_ALLOWFADEOUT)
+            , m_action(0)
         {
         }
 
         ~CFMODEventConnection() = default;
         bool HasProperties() override { return true; }
 
+        uint32_t m_action;
         bool m_loadSampleData;
         FMOD_STUDIO_STOP_MODE m_stopMode;
 
