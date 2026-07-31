@@ -61,7 +61,7 @@ namespace AudioEngineFMOD
         Audio::EAudioRequestStatus
         ActivateTrigger(Audio::IATLAudioObjectData *objectData,
                         const Audio::IATLTriggerImplData *triggerData,
-                        Audio::IATLEventData *tventData,
+                        Audio::IATLEventData *eventData,
                         const Audio::SATLSourceData *sourceData) override;
 
         Audio::EAudioRequestStatus StopEvent(Audio::IATLAudioObjectData *objectData,

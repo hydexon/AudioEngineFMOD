@@ -5,6 +5,12 @@
 
 namespace AudioEngineFMOD
 {
+    enum FMODEventAction {
+        eFEA_Play = 0,
+        eFEA_Pause,
+        eFEA_Stop
+    };
+
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
         FMOD_3D_ATTRIBUTES m_3dAttributes = {};
@@ -13,13 +19,16 @@ namespace AudioEngineFMOD
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
     {
+        FMOD::Studio::EventDescription* m_eventDescription = nullptr;
     };
 
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
-        FMOD::Studio::EventDescription* m_eventDescription;
+        AZStd::fixed_string<256> m_eventPath;
         bool m_preloadSampleData = false;
+        FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
+        int action = eFEA_Play;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData

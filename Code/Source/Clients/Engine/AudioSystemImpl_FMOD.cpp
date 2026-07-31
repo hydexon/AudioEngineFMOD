@@ -209,7 +209,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UpdateAudioObject(IATLAudioObjectData 
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerSync(IATLAudioObjectData *audioObjectData, const IATLTriggerImplData *triggerData) {
-
+    AZ_Info("FMODAudioSystem", "Preparing Trigger!");
     return EAudioRequestStatus::Success;
 }
 
@@ -219,6 +219,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerSync(IATLAudioObjectDa
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerAsync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData) {
+    AZ_Info("FMODAudioSystem", "Preparing Trigger (Async)!");
     return EAudioRequestStatus::Success;
 }
 
@@ -226,23 +227,77 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync(IATLAudioObjectD
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *tventData, const SATLSourceData *sourceData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::Success;
+EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData, const SATLSourceData *sourceData) {
+    auto result = EAudioRequestStatus::Success;
+
+    auto implObjData     = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    auto implTriggerData = static_cast<const SATLTriggerImplData_FMOD*>(triggerData);
+    auto implEventData   = static_cast<SATLEventData_FMOD*>(eventData);
+
+    AZ_UNUSED(sourceData); //We should implement FMOD Core playback of .ogg, .mp3 and .FLACs?
+    if(implObjData && implTriggerData && implEventData)
+    {
+        if(!implEventData->m_eventDescription)
+        {
+            FMOD_RESULT fr = m_studioSystem->getEvent(implTriggerData->m_eventPath.c_str(), &implEventData->m_eventDescription);
+            if(fr != FMOD_OK)
+            {
+                AZ_Error("FMODAudioSystem", false, "[ActivateTrigger] Failed to get event description from FMOD: %s", FMOD_ErrorString(fr));
+                result = EAudioRequestStatus::Failure;
+            }
+        }
+
+        FMOD::Studio::EventInstance* instance = nullptr;
+        FMOD_RESULT evtRst = implEventData->m_eventDescription->createInstance(&instance);
+        if(evtRst != FMOD_OK)
+        {
+            AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to create event instance of %s: %s",
+                     implTriggerData->m_eventPath.c_str(), FMOD_ErrorString(evtRst));
+
+            result = EAudioRequestStatus::Failure;
+        }
+
+        bool evtIs3D = false;
+        implEventData->m_eventDescription->is3D(&evtIs3D);
+        if(evtIs3D)
+        {
+            instance->set3DAttributes(&implObjData->m_3dAttributes);
+        }
+        implObjData->m_activeInstances.push_back(instance);
+        FMOD_RESULT playResult = instance->start();
+        AZ_Warning("FMODAudioSystem", playResult == FMOD_OK, "Failed to start EventInstance: %s", FMOD_ErrorString(playResult));
+
+    }
+
+    return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::Success;
+    EAudioRequestStatus result = EAudioRequestStatus::Failure;
+
+    auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
+    if(implEvtData)
+    {
+        auto implObjData = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+        if(implObjData)
+        {
+            AZ_Assert(implEvtData->m_eventDescription, "SATLEventData_FMOD is null!");
+            for(auto instance : implObjData->m_activeInstances)
+            {
+                //@TODO: This made rethink how the SATLEventData_FMOD* and SATL_AudioObjectData_FMOD should work!.
+                AZ_UNUSED(instance);
+            }
+        }
+    }
+    return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *objectData) {
-    // TODO: Implement this pure virtual method.
+    StopAllAndClearInstancesFromAudioObject(objectData);
     return EAudioRequestStatus::Success;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objectData, const SATLWorldPosition &worldPosition) {
-    // TODO: Implement this pure virtual method.
     auto* fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
     if(!fmodObj)
     {
@@ -511,17 +566,10 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
 
         if(eventNameAttr)
         {
-            const char* eventPath = eventNameAttr->value();
-            AZStd::string eventURI = AZStd::string::format("%s", eventPath);
-
-            FMOD::Studio::EventDescription* desc = nullptr;
-            FMOD_RESULT result = m_studioSystem->getEvent(eventURI.c_str(), &desc);
-            if(result == FMOD_OK && desc != nullptr)
-            {
-                newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (), Audio::AudioImplAllocator);
-                newTriggerImpl->m_eventDescription = desc;
-                newTriggerImpl->m_preloadSampleData = !preloadSampleDataAttr ? false : azstricmp(preloadSampleDataAttr->value(), "true") == 0;
-            }
+            newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (), Audio::AudioImplAllocator);
+            newTriggerImpl->m_eventPath = eventNameAttr->value();;
+            newTriggerImpl->m_preloadSampleData = !preloadSampleDataAttr ? false : azstricmp(preloadSampleDataAttr->value(), "true") == 0;
+            //@TODO: The rest of the data from the XML.
         }
     }
     return newTriggerImpl;
@@ -655,7 +703,7 @@ void AudioSystemImpl_FMOD::DestroyAudioSource(TAudioSourceId sourceId) {
 }
 
 void AudioSystemImpl_FMOD::SetPanningMode(PanningMode mode) {
-    // TODO: Implement this pure virtual method.
+    // Not Implemented.
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemLoseFocus() {
