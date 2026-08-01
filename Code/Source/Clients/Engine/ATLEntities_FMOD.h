@@ -2,14 +2,10 @@
 
 #include <ATLEntityData.h>
 #include <fmod_studio.hpp>
+#include "Common_FMOD.h"
 
 namespace AudioEngineFMOD
 {
-    enum FMODEventAction {
-        eFEA_Play = 0,
-        eFEA_Pause,
-        eFEA_Stop
-    };
 
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
@@ -19,16 +15,21 @@ namespace AudioEngineFMOD
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
     {
+        AZStd::fixed_string<256> m_eventPath;
         FMOD::Studio::EventDescription* m_eventDescription = nullptr;
+        FMOD::Studio::EventInstance* m_currentInstance = nullptr;
+        FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
+        FMODEventAction m_actionMode = FMODEventAction::Play;
     };
 
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
         AZStd::fixed_string<256> m_eventPath;
+        FMOD_GUID m_eventGUID;
         bool m_preloadSampleData = false;
         FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
-        int action = eFEA_Play;
+        FMODEventAction m_action = FMODEventAction::Unknown;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
@@ -45,7 +46,7 @@ namespace AudioEngineFMOD
     struct SATLAudioFileEntryData_FMOD : public Audio::IATLAudioFileEntryData
     {
         SATLAudioFileEntryData_FMOD(const char* bankBaseName, bool loadSampleData)
-            : pFMODBank(nullptr)
+            : m_FMODBank(nullptr)
             , m_baseBankName(bankBaseName)
             , m_loadSampleData(loadSampleData)
         {}
@@ -54,7 +55,7 @@ namespace AudioEngineFMOD
 
         bool m_loadSampleData;
         AZStd::string m_baseBankName;
-        FMOD::Studio::Bank* pFMODBank;
+        FMOD::Studio::Bank* m_FMODBank;
     };
 
 }

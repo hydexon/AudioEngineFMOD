@@ -154,6 +154,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ShutDown() {
     m_studioSystem->release();
+    m_studioSystem = nullptr;
     return EAudioRequestStatus::Success;
 }
 
@@ -239,53 +240,84 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *o
     {
         if(!implEventData->m_eventDescription)
         {
-            FMOD_RESULT fr = m_studioSystem->getEvent(implTriggerData->m_eventPath.c_str(), &implEventData->m_eventDescription);
-            if(fr != FMOD_OK)
+            m_studioSystem->getEventByID(&implTriggerData->m_eventGUID, &implEventData->m_eventDescription);
+        }
+
+        switch(implTriggerData->m_action) {
+        case FMODEventAction::Play: {
+            if(!implEventData->m_currentInstance)
             {
-                AZ_Error("FMODAudioSystem", false, "[ActivateTrigger] Failed to get event description from FMOD: %s", FMOD_ErrorString(fr));
-                result = EAudioRequestStatus::Failure;
+                FMOD_RESULT evtRst = implEventData->m_eventDescription->createInstance(&implEventData->m_currentInstance);
+                if(evtRst != FMOD_OK)
+                {
+                    AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to create event instance of %s: %s",
+                             implTriggerData->m_eventPath.c_str(), FMOD_ErrorString(evtRst));
+                    result = EAudioRequestStatus::Failure;
+                }
             }
+            bool evtIs3D = false;
+            implEventData->m_eventDescription->is3D(&evtIs3D);
+            if(evtIs3D)
+            {
+                implEventData->m_currentInstance->set3DAttributes(&implObjData->m_3dAttributes);
+            }
+            implEventData->m_currentInstance->start();
+            implObjData->m_activeInstances.push_back(implEventData->m_currentInstance);
+            implEventData->m_stopMode = implTriggerData->m_stopMode;
+            break;
         }
-
-        FMOD::Studio::EventInstance* instance = nullptr;
-        FMOD_RESULT evtRst = implEventData->m_eventDescription->createInstance(&instance);
-        if(evtRst != FMOD_OK)
-        {
-            AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to create event instance of %s: %s",
-                     implTriggerData->m_eventPath.c_str(), FMOD_ErrorString(evtRst));
-
-            result = EAudioRequestStatus::Failure;
+        case FMODEventAction::Resume:
+            break;
+        case FMODEventAction::Pause:
+            break;
+        case FMODEventAction::Stop: {
+            AZ_Assert(implEventData->m_currentInstance, "implEventData->m_currentInstance is null!");
+            implEventData->m_currentInstance->stop(implTriggerData->m_stopMode);
+            implObjData->m_activeInstances.erase(
+                        AZStd::remove_if(implObjData->m_activeInstances.begin(),
+                                         implObjData->m_activeInstances.end(),
+                                         [implEventData](FMOD::Studio::EventInstance* inst) {
+                                            return implEventData->m_currentInstance == inst;
+                        }));
+            implEventData->m_currentInstance->release();
+            implEventData->m_currentInstance = nullptr;
+            break;
         }
-
-        bool evtIs3D = false;
-        implEventData->m_eventDescription->is3D(&evtIs3D);
-        if(evtIs3D)
-        {
-            instance->set3DAttributes(&implObjData->m_3dAttributes);
+        default:
+            break;
         }
-        implObjData->m_activeInstances.push_back(instance);
-        FMOD_RESULT playResult = instance->start();
-        AZ_Warning("FMODAudioSystem", playResult == FMOD_OK, "Failed to start EventInstance: %s", FMOD_ErrorString(playResult));
-
     }
 
     return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData) {
-    EAudioRequestStatus result = EAudioRequestStatus::Failure;
-
+    EAudioRequestStatus result = EAudioRequestStatus::Success;
+    //this->StopAllEvents(objectData);
     auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
+    AZ_Info("FMODAudioSystem", "Tying to Stop Event: %s, (%s)", implEvtData->m_eventPath.c_str(), Utils::GetXmlStrFromAction(implEvtData->m_actionMode).c_str());
+    if(implEvtData->m_actionMode != FMODEventAction::Play)
+    {
+        return EAudioRequestStatus::Success;
+    }
     if(implEvtData)
     {
         auto implObjData = static_cast<SATLAudioObjectData_FMOD*>(objectData);
         if(implObjData)
         {
-            AZ_Assert(implEvtData->m_eventDescription, "SATLEventData_FMOD is null!");
-            for(auto instance : implObjData->m_activeInstances)
+            AZ_Assert(implEvtData->m_eventDescription, "SATLEventData_FMOD m_eventDescription is null!");
+            if(implEvtData->m_currentInstance)
             {
-                //@TODO: This made rethink how the SATLEventData_FMOD* and SATL_AudioObjectData_FMOD should work!.
-                AZ_UNUSED(instance);
+                implEvtData->m_currentInstance->stop(implEvtData->m_stopMode);
+                /*
+                implObjData->m_activeInstances.erase(
+                            AZStd::remove_if(implObjData->m_activeInstances.begin(),
+                                             implObjData->m_activeInstances.end(),
+                                             [implEvtData](FMOD::Studio::EventInstance* inst) {
+                                                return implEvtData->m_currentInstance == inst;
+                            }));*/
+                implEvtData->m_currentInstance->release();
+                result = EAudioRequestStatus::Success;
             }
         }
     }
@@ -403,7 +435,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
                                                                     aznumeric_cast<int>(audioFileEntry->nSize),
                                                                     FMOD_STUDIO_LOAD_MEMORY_POINT, //Match Wwise's AK::SoundEngine::LoadBankMemoryView behavior.
                                                                     FMOD_STUDIO_LOAD_BANK_NORMAL,
-                                                                    &implFileEntryData->pFMODBank);
+                                                                    &implFileEntryData->m_FMODBank);
 
             if(bankResult != FMOD_OK)
             {
@@ -411,14 +443,14 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
                            "Failed to load bank from memory: %s, FMOD Error: %s",
                            audioFileEntry->sFileName, FMOD_ErrorString(bankResult));
 
-                implFileEntryData->pFMODBank = nullptr;
+                implFileEntryData->m_FMODBank = nullptr;
                 result = EAudioRequestStatus::Failure;
             }
             else
             {
                 if(implFileEntryData->m_loadSampleData)
                 {
-                    if(FMOD_RESULT loadResult = implFileEntryData->pFMODBank->loadSampleData(); loadResult != FMOD_OK)
+                    if(FMOD_RESULT loadResult = implFileEntryData->m_FMODBank->loadSampleData(); loadResult != FMOD_OK)
                     {
                         AZ_Error("FMODAudioSystem", false, "Unable to load sample data for bank '%s', FMOD Error: %s",
                                  audioFileEntry->sFileName, FMOD_ErrorString(loadResult));
@@ -440,7 +472,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
         auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
         if(implFileEntryData)
         {
-            FMOD_RESULT bankResult = implFileEntryData->pFMODBank->unload();
+            FMOD_RESULT bankResult = implFileEntryData->m_FMODBank->unload();
             if(bankResult != FMOD_OK)
             {
                 AZ_Warning("FMODAudioSystem", false, "FMOD::Studio::Bank::Unload returned %s", FMOD_ErrorString(bankResult));
@@ -563,12 +595,22 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     if(audioTriggerNode && azstricmp(audioTriggerNode->name(), XMLTags::FMODEventTag) == 0) {
         auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
         auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODSamplePreloadAttr, 0, false);
-
+        auto actionAttr = audioTriggerNode->first_attribute(XMLTags::FMODEvtAction, 0, false);
         if(eventNameAttr)
         {
+            const char* eventName = eventNameAttr->value();
             newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (), Audio::AudioImplAllocator);
-            newTriggerImpl->m_eventPath = eventNameAttr->value();;
+            newTriggerImpl->m_eventPath = eventName;
             newTriggerImpl->m_preloadSampleData = !preloadSampleDataAttr ? false : azstricmp(preloadSampleDataAttr->value(), "true") == 0;
+            newTriggerImpl->m_action = FMODEventAction::Play;
+            if(actionAttr)
+            {
+                auto actionStr = actionAttr->value();
+                newTriggerImpl->m_action = Utils::GetActionFromXmlStr(actionStr);
+            }
+
+            FMOD_RESULT evtIdR = m_studioSystem->lookupID(eventName, &newTriggerImpl->m_eventGUID);
+            AZ_Warning("FMODAudioSystem", evtIdR == FMOD_OK, "FMOD Error trying to query up GUID of event %s: %s", eventName, FMOD_ErrorString(evtIdR));
             //@TODO: The rest of the data from the XML.
         }
     }
@@ -852,6 +894,7 @@ void AudioSystemImpl_FMOD::StopAllAndClearInstancesFromAudioObject(Audio::IATLAu
     {
         instance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
         instance->release();
+        instance = nullptr;
     }
     fmodObj->m_activeInstances.clear();
 }
@@ -868,6 +911,7 @@ void AudioSystemImpl_FMOD::ClearStoppedEventInstances(Audio::IATLAudioObjectData
         if(state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
             inst->release();
+            inst = nullptr;
             return true;
         }
         return false;

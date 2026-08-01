@@ -270,8 +270,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                                 actionAttr != nullptr)
                         {
                             AZStd::string_view actionStr = actionAttr->value();
-                            conn->m_action = AZ::StringFunc::Equal(actionStr, "play") ?
-                                        0 : AZ::StringFunc::Equal(actionStr, "pause") ? 1 : 2;
+                            conn->m_action = Utils::GetActionFromXmlStr(actionStr);
                         }
 
                         if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
@@ -321,11 +320,9 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
                 connectionNode->append_attribute(loadSampleDataAttr);
 
+                auto actionStr = Utils::GetXmlStrFromAction(conn->m_action);
                 auto evtActionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction,
-                                                                 xmlAlloc.allocate_string(
-                                                                     conn->m_action == 0 ? "play" :
-                                                                                           conn->m_action == 1 ? "paused"
-                                                                                                               : "stop"));
+                                                                 xmlAlloc.allocate_string(actionStr.c_str()));
 
                 connectionNode->append_attribute(evtActionAttr);
 

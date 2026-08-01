@@ -209,8 +209,6 @@ namespace AudioEngineFMOD
         AZStd::unordered_map<AZStd::string, AZStd::string> m_availableLocales;
         AZStd::list<AZStd::string> m_loadedLocalizedBanksNames; //Hack to get around
 
-        AZStd::unordered_map<AZStd::string, FMOD::Studio::EventDescription*> m_preparedEventDescriptions;
-
         void SetBankPaths();
         void LoadFMODLocaleMappings();
         void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);

@@ -43,6 +43,11 @@
           </item>
           <item>
            <property name="text">
+            <string>Resume</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>Stop</string>
            </property>
           </item>

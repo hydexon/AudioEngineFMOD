@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IAudioConnection.h>
+#include "../../Clients/Engine/Common_FMOD.h"
 #include <fmod_studio_common.h>
 
 namespace AudioEngineFMOD
@@ -29,14 +30,14 @@ namespace AudioEngineFMOD
             : AudioControls::IAudioConnection(id)
             , m_loadSampleData(false)
             , m_stopMode(FMOD_STUDIO_STOP_ALLOWFADEOUT)
-            , m_action(0)
+            , m_action(FMODEventAction::Play)
         {
         }
 
         ~CFMODEventConnection() = default;
         bool HasProperties() override { return true; }
 
-        uint32_t m_action;
+        FMODEventAction m_action;
         bool m_loadSampleData;
         FMOD_STUDIO_STOP_MODE m_stopMode;
 

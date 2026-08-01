@@ -21,8 +21,19 @@ namespace AudioEngineFMOD
         static constexpr const char* FMODEvtAction = "eventAction";
     }
 
+    enum class FMODEventAction {
+        Play = 0,
+        Pause,
+        Stop,
+        Resume,
+        Unknown
+    };
+
     namespace Utils
     {
+        FMODEventAction GetActionFromXmlStr(const AZStd::string_view source);
+        AZStd::string GetXmlStrFromAction(const FMODEventAction action);
+
         FMOD_VECTOR AzToFMODVector(const AZ::Vector3& vector);
         AZ::Vector3 FMODToAzVector(const FMOD_VECTOR& vector);
         FMOD_3D_ATTRIBUTES CreateFMOD3DAttributes(const AZ::Vector3& pos,
