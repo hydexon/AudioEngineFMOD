@@ -16,6 +16,25 @@ using namespace Audio;
 
 namespace AudioEngineFMOD
 {
+#if defined(AZ_DEBUG_BUILD)
+    namespace Debug {
+        FMOD_RESULT F_CALL AzDebugHook(FMOD_DEBUG_FLAGS flags, const char* file, int line, const char *func, const char* message) {
+            if(flags & FMOD_DEBUG_LEVEL_ERROR)
+            {
+                AZ_Error("FMOD", false, "[%s:%s#%d]: %s", file, func, line, message);
+            }
+            else if(flags & FMOD_DEBUG_LEVEL_WARNING)
+            {
+                AZ_Warning("FMOD", false, "[%s:%s#%d]: %s", file, func, line, message);
+            }
+            else
+            {
+                AZ_Info("FMOD", "[%s:%s#%d]: %s", file, func, line, message);
+            }
+            return FMOD_OK;
+        }
+    }
+#endif
 
     namespace MemCallbacks
     {
@@ -74,6 +93,12 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
                 MemCallbacks::Free
                 );
 
+#if defined(AZ_DEBUG_BUILD)
+    FMOD::Debug_Initialize(
+                FMOD_DEBUG_LEVEL_ERROR | FMOD_DEBUG_LEVEL_WARNING | FMOD_DEBUG_LEVEL_LOG,
+                FMOD_DEBUG_MODE_CALLBACK, Debug::AzDebugHook);
+#endif
+
     FMOD_RESULT result = FMOD::Studio::System::create(&m_studioSystem);
 
     if(result != FMOD_OK)
@@ -89,6 +114,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     studioSettings.studioupdateperiod = CVars::s_FMODStudio_StudioUpdatePeriod;
     studioSettings.idlesampledatapoolsize = CVars::s_FMODStudio_IdleSampleDataPoolSize;
     studioSettings.streamingscheduledelay = CVars::s_FMODStudio_StreamingScheduleDelay;
+    studioSettings.cbsize = sizeof(FMOD_STUDIO_ADVANCEDSETTINGS);
 
     m_studioSystem->setAdvancedSettings(&studioSettings);
 
@@ -97,6 +123,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
 
     FMOD_ADVANCEDSETTINGS coreSettings;
     coreSettings.profilePort = CVars::s_FMODCore_ProfilePort;
+    coreSettings.cbSize = sizeof(FMOD_ADVANCEDSETTINGS);
+
     coreSystem->setAdvancedSettings(&coreSettings);
 
     coreSystem->setFileSystem(
@@ -428,7 +456,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
     EAudioRequestStatus result = EAudioRequestStatus::Success;
     if(audioFileEntry)
     {
-        //@TODO: Localized banks.
         auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
 
         if(implFileEntryData)
