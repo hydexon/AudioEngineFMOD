@@ -51,4 +51,12 @@ namespace AudioEngineFMOD::CVars
             nullptr,
             AZ::ConsoleFunctorFlags::Null,
             "Used when FMOD Profiler is Enabled and the s_FMODStudio_EnableProfiling is enabled.");
+
+    AZ_CVAR(bool,
+            s_FMODStudio_PauseAudioOnFocusLost,
+            true,
+            nullptr,
+            AZ::ConsoleFunctorFlags::Null,
+            "FMOD Pauses Audio when the game loses focus."
+            );
 }

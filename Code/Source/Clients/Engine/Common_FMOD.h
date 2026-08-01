@@ -21,6 +21,35 @@ namespace AudioEngineFMOD
         static constexpr const char* FMODEvtAction = "eventAction";
     }
 
+    struct FMOD_GUID_CmpEqual {
+        bool operator()(const FMOD_GUID& lhs, const FMOD_GUID& rhs) const {
+            return memcmp(&lhs, &rhs, sizeof(FMOD_GUID)) == 0;
+        }
+    };
+
+    struct FMOD_GUID_Hashing {
+        AZStd::size_t operator()(const FMOD_GUID& guid) const noexcept {
+            const auto* ptr  = reinterpret_cast<const char*>(&guid);
+            //Simple hash combination (Should use FNV-1a instead)?
+#if 1
+            size_t hash = 0;
+            for(AZStd::size_t i = 0; i < sizeof(FMOD_GUID); ++i)
+            {
+                hash = hash * 31 + ptr[i];
+            }
+#else
+            AZStd::size_t hash = 14695981039346656037ULL;
+            for(size_t i = 0; i < sizeof(FMOD_GUID); ++i)
+            {
+                hash ^= static_cast<size_t>(ptr[i]);
+                hash *= 1099511628211ULL;
+            }
+#endif
+            return hash;
+        }
+    };
+
+
     enum class FMODEventAction {
         Play = 0,
         Pause,

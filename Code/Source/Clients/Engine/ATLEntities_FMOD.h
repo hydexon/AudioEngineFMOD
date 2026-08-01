@@ -11,10 +11,12 @@ namespace AudioEngineFMOD
     {
         FMOD_3D_ATTRIBUTES m_3dAttributes = {};
         AZStd::vector<FMOD::Studio::EventInstance*> m_activeInstances;
+        //AZStd::unordered_multimap<FMOD_GUID, FMOD::Studio::EventInstance*, FMOD_GUID_CmpEqual, FMOD_GUID_Hashing> m_instances;
     };
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
     {
+        AZStd::string atlName;
         AZStd::fixed_string<256> m_eventPath;
         FMOD::Studio::EventDescription* m_eventDescription = nullptr;
         FMOD::Studio::EventInstance* m_currentInstance = nullptr;
@@ -25,6 +27,7 @@ namespace AudioEngineFMOD
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
+        AZStd::string atlName;
         AZStd::fixed_string<256> m_eventPath;
         FMOD_GUID m_eventGUID;
         bool m_preloadSampleData = false;

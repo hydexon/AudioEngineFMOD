@@ -264,23 +264,23 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *o
             implEventData->m_currentInstance->start();
             implObjData->m_activeInstances.push_back(implEventData->m_currentInstance);
             implEventData->m_stopMode = implTriggerData->m_stopMode;
+            implEventData->m_eventPath = implTriggerData->m_eventPath;
+            implEventData->atlName = implTriggerData->atlName;
             break;
         }
         case FMODEventAction::Resume:
+            AZ_Assert(implEventData->m_currentInstance, "implEventData->m_currentInstance is null!");
+            implEventData->m_currentInstance->setPaused(true);
             break;
         case FMODEventAction::Pause:
+            AZ_Assert(implEventData->m_currentInstance, "implEventData->m_currentInstance is null!");
+            implEventData->m_currentInstance->setPaused(false);
             break;
         case FMODEventAction::Stop: {
             AZ_Assert(implEventData->m_currentInstance, "implEventData->m_currentInstance is null!");
             implEventData->m_currentInstance->stop(implTriggerData->m_stopMode);
-            implObjData->m_activeInstances.erase(
-                        AZStd::remove_if(implObjData->m_activeInstances.begin(),
-                                         implObjData->m_activeInstances.end(),
-                                         [implEventData](FMOD::Studio::EventInstance* inst) {
-                                            return implEventData->m_currentInstance == inst;
-                        }));
-            implEventData->m_currentInstance->release();
-            implEventData->m_currentInstance = nullptr;
+            implEventData->m_currentInstance = nullptr; //ClearStoppedEventInstances will take care about in the Audio Object.
+            implEventData->atlName = implTriggerData->atlName;
             break;
         }
         default:
@@ -295,28 +295,30 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectD
     EAudioRequestStatus result = EAudioRequestStatus::Success;
     //this->StopAllEvents(objectData);
     auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
-    AZ_Info("FMODAudioSystem", "Tying to Stop Event: %s, (%s)", implEvtData->m_eventPath.c_str(), Utils::GetXmlStrFromAction(implEvtData->m_actionMode).c_str());
+    auto implObjData = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+
+    AZ_Info("FMODAudioSystem", "Trying to Stop ATLName: %s, Event: %s (%s), Objects EventInstance Count: %d",
+            implEvtData->atlName.c_str(),
+            implEvtData->m_eventPath.c_str(),
+            Utils::GetXmlStrFromAction(implEvtData->m_actionMode).c_str(),
+            implObjData->m_activeInstances.size()
+            );
+
     if(implEvtData->m_actionMode != FMODEventAction::Play)
     {
         return EAudioRequestStatus::Success;
     }
+
     if(implEvtData)
     {
-        auto implObjData = static_cast<SATLAudioObjectData_FMOD*>(objectData);
         if(implObjData)
         {
             AZ_Assert(implEvtData->m_eventDescription, "SATLEventData_FMOD m_eventDescription is null!");
             if(implEvtData->m_currentInstance)
             {
                 implEvtData->m_currentInstance->stop(implEvtData->m_stopMode);
-                /*
-                implObjData->m_activeInstances.erase(
-                            AZStd::remove_if(implObjData->m_activeInstances.begin(),
-                                             implObjData->m_activeInstances.end(),
-                                             [implEvtData](FMOD::Studio::EventInstance* inst) {
-                                                return implEvtData->m_currentInstance == inst;
-                            }));*/
                 implEvtData->m_currentInstance->release();
+                //ClearStoppedEventInstances will take care.
                 result = EAudioRequestStatus::Success;
             }
         }
@@ -593,6 +595,20 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
 
     if(audioTriggerNode && azstricmp(audioTriggerNode->name(), XMLTags::FMODEventTag) == 0) {
+        //Get the ATL Control Trigger name for debug purposes:
+        AZStd::string atlName;
+        if(audioTriggerNode->parent())
+        {
+            const char* parentName = audioTriggerNode->parent()->name();
+            if(azstricmp(parentName, "ATLTrigger") == 0)
+            {
+                auto atlnameAttr = audioTriggerNode->parent()->first_attribute("atl_name");
+                if(atlnameAttr)
+                {
+                    atlName = atlnameAttr->value();
+                }
+            }
+        }
         auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
         auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODSamplePreloadAttr, 0, false);
         auto actionAttr = audioTriggerNode->first_attribute(XMLTags::FMODEvtAction, 0, false);
@@ -603,6 +619,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
             newTriggerImpl->m_eventPath = eventName;
             newTriggerImpl->m_preloadSampleData = !preloadSampleDataAttr ? false : azstricmp(preloadSampleDataAttr->value(), "true") == 0;
             newTriggerImpl->m_action = FMODEventAction::Play;
+            newTriggerImpl->atlName = atlName;
             if(actionAttr)
             {
                 auto actionStr = actionAttr->value();
@@ -749,19 +766,39 @@ void AudioSystemImpl_FMOD::SetPanningMode(PanningMode mode) {
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemLoseFocus() {
-    // TODO: Implement this pure virtual method.
+    if(CVars::s_FMODStudio_PauseAudioOnFocusLost)
+    {
+        FMOD::System* sys = nullptr;
+        m_studioSystem->getCoreSystem(&sys);
+        if(sys)
+        {
+            sys->mixerSuspend();
+        }
+    }
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemGetFocus() {
-    // TODO: Implement this pure virtual method.
+    if(CVars::s_FMODStudio_PauseAudioOnFocusLost)
+    {
+        FMOD::System* sys = nullptr;
+        m_studioSystem->getCoreSystem(&sys);
+        if(sys)
+        {
+            sys->mixerResume();
+        }
+    }
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemMuteAll() {
-    // TODO: Implement this pure virtual method.
+    // FMOD has no direct way to mute everything, you might achieve this with events instead.
+    // The only hack i might know is get every bus from every loaded bank, and retrieve every bus.
+    // iterate each one and call FMOD::Studio::Bus::Mute() then Unmute().
+    // This was proposed as a solution by an Firelight FMOD engineer!:
+    // https://qa.fmod.com/t/how-to-make-an-mute-unmute-button/18840/5
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemUnmuteAll() {
-    // TODO: Implement this pure virtual method.
+    //See comments from OnAudioSystemMuteAll().
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
@@ -910,6 +947,7 @@ void AudioSystemImpl_FMOD::ClearStoppedEventInstances(Audio::IATLAudioObjectData
         inst->getPlaybackState(&state);
         if(state == FMOD_STUDIO_PLAYBACK_STOPPED)
         {
+            AZ_Info("FMODAudioSystem", "Freeing Stopped EventInstance");
             inst->release();
             inst = nullptr;
             return true;

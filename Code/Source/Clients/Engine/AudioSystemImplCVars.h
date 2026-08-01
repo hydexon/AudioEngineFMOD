@@ -13,4 +13,5 @@ namespace AudioEngineFMOD::CVars
     AZ_CVAR_EXTERNED(uint32_t, s_FMODStudio_StreamingScheduleDelay);
 
     AZ_CVAR_EXTERNED(uint16_t, s_FMODCore_ProfilePort);
+    AZ_CVAR_EXTERNED(bool, s_FMODStudio_PauseAudioOnFocusLost);
 }
