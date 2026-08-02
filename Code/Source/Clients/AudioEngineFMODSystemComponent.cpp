@@ -39,14 +39,14 @@ namespace AudioEngineFMOD
         incompatible.push_back(AZ_CRC_CE("AudioEngineService"));
     }
 
-    void AudioEngineFMODSystemComponent::GetRequiredServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& required)
+    void AudioEngineFMODSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        required.push_back(AZ_CRC("AudioSystemService"));
+        required.push_back(AZ_CRC_CE("AudioSystemService"));
     }
 
-    void AudioEngineFMODSystemComponent::GetDependentServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    void AudioEngineFMODSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
-        dependent.push_back(AZ_CRC("AudioSystemService"));
+        dependent.push_back(AZ_CRC_CE("AudioSystemService"));
     }
 
     void AudioEngineFMODSystemComponent::Init()
