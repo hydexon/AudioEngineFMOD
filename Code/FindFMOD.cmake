@@ -11,7 +11,11 @@
 
 SET(FMOD_TARGET_ARCH "x86_64") # Default.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64|x86_64|AMD64")
-    set(FMOD_TARGET_ARCH "x86_64")
+	if(NOT WIN32)
+		set(FMOD_TARGET_ARCH "x86_64")
+	else()
+		set(FMOD_TARGET_ARCH "x64")
+	endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
     set(FMOD_TARGET_ARCH "arm64")
 else()
@@ -37,7 +41,7 @@ find_path(FMOD_STUDIO_INCLUDE_DIR "fmod_studio.hpp"
     DOC "FMOD SDK - Studio Headers Location"
 )
 
-find_library(FMOD_CORE_LIBRARY fmod
+find_library(FMOD_CORE_LIBRARY NAMES fmod fmod_vc
     PATHS
     $ENV{FMOD_HOME}/api
     ${FMOD_ROOT}/api
@@ -47,7 +51,7 @@ find_library(FMOD_CORE_LIBRARY fmod
 )
 
 
-find_library(FMOD_STUDIO_LIBRARY fmodstudio
+find_library(FMOD_STUDIO_LIBRARY NAMES fmodstudio fmodstudio_vc
     PATHS
     $ENV{FMOD_HOME}/api
     ${FMOD_ROOT}/api
@@ -57,7 +61,7 @@ find_library(FMOD_STUDIO_LIBRARY fmodstudio
 )
 
 
-find_library(FMOD_CORE_LIBRARY_LOGGING fmodL
+find_library(FMOD_CORE_LIBRARY_LOGGING NAMES fmodL fmodL_vc
     PATHS
     $ENV{FMOD_HOME}/api
     ${FMOD_ROOT}/api
@@ -67,7 +71,7 @@ find_library(FMOD_CORE_LIBRARY_LOGGING fmodL
 )
 
 
-find_library(FMOD_STUDIO_LIBRARY_LOGGING fmodstudioL
+find_library(FMOD_STUDIO_LIBRARY_LOGGING NAMES fmodstudioL fmodstudioL_vc
     PATHS
     $ENV{FMOD_HOME}/api
     ${FMOD_ROOT}/api
@@ -101,16 +105,21 @@ if(FMOD_FOUND)
     math(EXPR MINOR_VERSION   "0x${MINOR_VERSION_HEX}")
 
     message(STATUS "FMOD SDK Version Found = ${PRODUCT_VERSION}.${MAJOR_VERSION}.${MINOR_VERSION}")
-    message(STATUS "FMOD Library: ${FMOD_CORE_LIBRARY}, FMOD Studio Library: ${FMOD_STUDIO_LIBRARY}")
+    message(STATUS " - FMOD Library: ${FMOD_CORE_LIBRARY}, FMOD Studio Library: ${FMOD_STUDIO_LIBRARY}")
+	message(STATUS " - FMOD Logging Library: ${FMOD_CORE_LIBRARY_LOGGING}, FMOD Studio LOGGING Library: ${FMOD_STUDIO_LIBRARY_LOGGING}")
+	message(STATUS " - FMOD Core Include Directory: ${FMOD_CORE_INCLUDE_DIR}")
+	message(STATUS " - FMOD Studio Include Directory: ${FMOD_STUDIO_INCLUDE_DIR}")
 
     add_library(3rdParty::FMOD UNKNOWN IMPORTED GLOBAL)
     set_target_properties(3rdParty::FMOD PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "${FMOD_CORE_INCLUDE_DIR}"
         IMPORTED_LOCATION "${FMOD_CORE_LIBRARY}"
         IMPORTED_LOCATION_DEBUG "${FMOD_CORE_LIBRARY_LOGGING}")
     ly_target_include_system_directories(TARGET 3rdParty::FMOD INTERFACE ${FMOD_CORE_INCLUDE_DIR})
 
     add_library(3rdParty::FMODStudio UNKNOWN IMPORTED GLOBAL)
     set_target_properties(3rdParty::FMODStudio PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "${FMOD_STUDIO_INCLUDE_DIR}"
         IMPORTED_LOCATION "${FMOD_STUDIO_LIBRARY}"
         IMPORTED_LOCATION_DEBUG "${FMOD_STUDIO_LIBRARY_LOGGING}")
     ly_target_include_system_directories(TARGET 3rdParty::FMODStudio INTERFACE ${FMOD_STUDIO_INCLUDE_DIR})

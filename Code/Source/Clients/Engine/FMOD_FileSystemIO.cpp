@@ -22,7 +22,7 @@ namespace AudioEngineFMOD
     namespace SyncIO
     {
 
-    FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *userData)
+    FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *)
     {
         const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
         auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
@@ -48,7 +48,7 @@ namespace AudioEngineFMOD
         return FMOD_ERR_FILE_NOTFOUND;
     }
 
-    FMOD_RESULT AzFileClose(void *handle, void *userData)
+    FMOD_RESULT AzFileClose(void *handle, void *)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
@@ -67,7 +67,7 @@ namespace AudioEngineFMOD
         return FMOD_ERR_FILE_BAD;
     }
 
-    FMOD_RESULT AzFileRead(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesRead, void *userData)
+    FMOD_RESULT AzFileRead(void *handle, void *buffer, unsigned int sizebytes, unsigned int *bytesRead, void *)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
@@ -92,7 +92,7 @@ namespace AudioEngineFMOD
         return FMOD_OK;
     }
 
-    FMOD_RESULT AzFileSeek(void *handle, unsigned int pos, void *userData)
+    FMOD_RESULT AzFileSeek(void *handle, unsigned int pos, void *)
     {
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         auto iodata = reinterpret_cast<AZIOData*>(handle);
@@ -106,7 +106,7 @@ namespace AudioEngineFMOD
     namespace AsyncIO
     {
 
-    FMOD_RESULT AzAsyncFileRead(FMOD_ASYNCREADINFO *info, void *userData)
+    FMOD_RESULT AzAsyncFileRead(FMOD_ASYNCREADINFO *info, void *)
     {
         AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);
         if(!IOData)
@@ -160,7 +160,7 @@ namespace AudioEngineFMOD
         return FMOD_OK;
     }
 
-    FMOD_RESULT AzAsyncFileCancel(FMOD_ASYNCREADINFO *info, void *userData)
+    FMOD_RESULT AzAsyncFileCancel(FMOD_ASYNCREADINFO *info, void *)
     {
         auto streamer = AZ::Interface<AZ::IO::IStreamer>::Get();
         AZIOData* IOData = reinterpret_cast<AZIOData*>(info->userdata);

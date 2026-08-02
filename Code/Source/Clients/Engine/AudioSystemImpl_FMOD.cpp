@@ -38,17 +38,17 @@ namespace AudioEngineFMOD
 
     namespace MemCallbacks
     {
-        void* F_CALL Malloc(unsigned int size, FMOD_MEMORY_TYPE type, const char* srcstr)
+        void* F_CALL Malloc(unsigned int size, [[maybe_unused]] FMOD_MEMORY_TYPE type, [[maybe_unused]] const char* srcstr)
         {
             return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().Allocate(size, 0, 0, nullptr);
         }
 
-        void* F_CALL Realloc(void* ptr, unsigned int size, FMOD_MEMORY_TYPE type, const char* srcstr)
+        void* F_CALL Realloc(void* ptr, unsigned int size, [[maybe_unused]] FMOD_MEMORY_TYPE type, [[maybe_unused]] const char* srcstr)
         {
             return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().ReAllocate(ptr, size, 0);
         }
 
-        void F_CALL Free(void* ptr, FMOD_MEMORY_TYPE type, const char* srcstr)
+        void F_CALL Free(void* ptr, [[maybe_unused]] FMOD_MEMORY_TYPE type, [[maybe_unused]] const char* srcstr)
         {
             return AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().DeAllocate(ptr);
         }
@@ -78,7 +78,7 @@ AudioSystemImpl_FMOD::~AudioSystemImpl_FMOD()
     AudioSystemImplementationNotificationBus::Handler::BusDisconnect();
 }
 
-void AudioSystemImpl_FMOD::Update(float updateIntervalMS) {
+void AudioSystemImpl_FMOD::Update([[maybe_unused]] float updateIntervalMS) {
     AZ_PROFILE_FUNCTION(Audio);
     m_studioSystem->update();
 }
@@ -202,12 +202,12 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *objectData, const char *objectName) {
+EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *, const char *) {
     // FMOD Has no motion of "Audio Objects" like wwise..
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *objectData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *) {
     // Same here either.
     return EAudioRequestStatus::Success;
 }
@@ -237,22 +237,22 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UpdateAudioObject(IATLAudioObjectData 
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerSync(IATLAudioObjectData *audioObjectData, const IATLTriggerImplData *triggerData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerSync([[maybe_unused]] IATLAudioObjectData *audioObjectData, [[maybe_unused]] const IATLTriggerImplData *triggerData) {
     AZ_Info("FMODAudioSystem", "Preparing Trigger!");
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerSync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerSync([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLTriggerImplData *triggerData) {
 
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerAsync(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::PrepareTriggerAsync([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLTriggerImplData *triggerData, [[maybe_unused]] IATLEventData *eventData) {
     AZ_Info("FMODAudioSystem", "Preparing Trigger (Async)!");
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync(IATLAudioObjectData *pAudioObjectData, const IATLTriggerImplData *pTriggerData, IATLEventData *pEventData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync([[maybe_unused]] IATLAudioObjectData *pAudioObjectData, [[maybe_unused]] const IATLTriggerImplData *pTriggerData, [[maybe_unused]] IATLEventData *pEventData) {
     return EAudioRequestStatus::Success;
 }
 
@@ -378,17 +378,17 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objec
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetMultiplePositions(IATLAudioObjectData *objectData, const MultiPositionParams &multiPositions) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetMultiplePositions(IATLAudioObjectData *, const MultiPositionParams &) {
     AZ_Error("FMODAudioSystem", false, "Set Multiple Positions in FMOD are not supported!");
     return EAudioRequestStatus::FailureInvalidRequest;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData, float value) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLRtpcImplData *rtpcData, [[maybe_unused]] float value) {
     // TODO: Implement this pure virtual method.
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLSwitchStateImplData *switchStateData) {
     // TODO: Implement this pure virtual method.
     return EAudioRequestStatus::Success;
 }
@@ -425,7 +425,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjec
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLEnvironmentImplData *environmentData, [[maybe_unused]] float amount) {
     return EAudioRequestStatus::None;
 }
 
@@ -447,7 +447,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLRtpcImplData *rtpcData) {
     return EAudioRequestStatus::Success;
 }
 
@@ -665,32 +665,32 @@ void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTr
     azdestroy(oldTriggerData, Audio::AudioImplAllocator, SATLTriggerImplData_FMOD);
 }
 
-IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode) {
+IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioRtpcNode) {
     // TODO: Implement this pure virtual method.
     return nullptr;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData) {
+void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData([[maybe_unused]] IATLRtpcImplData *oldRtpcData) {
     // TODO: Implement this pure virtual method.
 }
 
-IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char> *audioSwitchStateNode) {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
-
-}
-
-void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData(IATLSwitchStateImplData *oldAudioSwitchStateData) {
-    // TODO: Implement this pure virtual method.
-}
-
-IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
+IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioSwitchStateNode) {
     // TODO: Implement this pure virtual method.
     return nullptr;
 
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData *oldEnvironmentData) {
+void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData([[maybe_unused]] IATLSwitchStateImplData *oldAudioSwitchStateData) {
+    // TODO: Implement this pure virtual method.
+}
+
+IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
+    // TODO: Implement this pure virtual method.
+    return nullptr;
+
+}
+
+void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData([[maybe_unused]] IATLEnvironmentImplData *oldEnvironmentData) {
     // TODO: Implement this pure virtual method.
 }
 
@@ -727,7 +727,7 @@ void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldLi
     azdestroy(oldListenerData, Audio::AudioImplAllocator, SATLListenerData_FMOD);
 }
 
-IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData(TAudioEventID eventID) {
+IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData([[maybe_unused]] TAudioEventID eventID) {
     auto audioEventData = azcreate(SATLEventData_FMOD, (), Audio::AudioImplAllocator);
     return audioEventData;
 }
@@ -780,15 +780,15 @@ AZStd::vector<AudioImplMemoryPoolInfo> AudioSystemImpl_FMOD::GetMemoryPoolInfo()
     return AZStd::vector<AudioImplMemoryPoolInfo>();
 }
 
-bool AudioSystemImpl_FMOD::CreateAudioSource(const SAudioInputConfig &sourceConfig) {
+bool AudioSystemImpl_FMOD::CreateAudioSource([[maybe_unused]] const SAudioInputConfig &sourceConfig) {
     return false;
 }
 
-void AudioSystemImpl_FMOD::DestroyAudioSource(TAudioSourceId sourceId) {
+void AudioSystemImpl_FMOD::DestroyAudioSource([[maybe_unused]] TAudioSourceId sourceId) {
     // TODO: Implement this pure virtual method.
 }
 
-void AudioSystemImpl_FMOD::SetPanningMode(PanningMode mode) {
+void AudioSystemImpl_FMOD::SetPanningMode(PanningMode) {
     // Not Implemented.
 }
 
