@@ -80,6 +80,48 @@ find_library(FMOD_STUDIO_LIBRARY_LOGGING NAMES fmodstudioL fmodstudioL_vc
     DOC "FMOD SDK - Core Library (Logging Enabled)"
 )
 
+# Runtime DLLS (Windows Only)
+if(WIN32)
+
+find_file(FMOD_CORE_DLL NAMES fmod.dll
+	PATHS
+    $ENV{FMOD_HOME}/api
+    ${FMOD_ROOT}/api
+    PATH_SUFFIXES
+    core/lib/${FMOD_TARGET_ARCH}
+	DOC "FMOD SDK - Core Runtime DLL."
+)
+
+find_file(FMOD_CORE_LOGGING_DLL NAMES fmodL.dll
+	PATHS
+    $ENV{FMOD_HOME}/api
+    ${FMOD_ROOT}/api
+    PATH_SUFFIXES
+    core/lib/${FMOD_TARGET_ARCH}
+	DOC "FMOD SDK - Core Runtime DLL (Logging Enabled)."
+)
+
+
+find_file(FMOD_STUDIO_DLL NAMES fmodstudio.dll
+	PATHS
+    $ENV{FMOD_HOME}/api
+    ${FMOD_ROOT}/api
+    PATH_SUFFIXES
+    studio/lib/${FMOD_TARGET_ARCH}
+	DOC "FMOD SDK - Studio Runtime DLL."
+)
+
+find_file(FMOD_STUDIO_LOGGING_DLL NAMES fmodstudioL.dll
+	PATHS
+    $ENV{FMOD_HOME}/api
+    ${FMOD_ROOT}/api
+    PATH_SUFFIXES
+    studio/lib/${FMOD_TARGET_ARCH}
+	DOC "FMOD SDK - Studio Runtime DLL (Logging Enabled)."
+)
+
+endif()
+
 INCLUDE(FindPackageHandleStandardArgs)
 
 set(FMOD_LIBRARIES ${FMOD_CORE_LIBRARY} ${FMOD_STUDIO_LIBRARY})
@@ -109,18 +151,40 @@ if(FMOD_FOUND)
 	message(STATUS " - FMOD Logging Library: ${FMOD_CORE_LIBRARY_LOGGING}, FMOD Studio LOGGING Library: ${FMOD_STUDIO_LIBRARY_LOGGING}")
 	message(STATUS " - FMOD Core Include Directory: ${FMOD_CORE_INCLUDE_DIR}")
 	message(STATUS " - FMOD Studio Include Directory: ${FMOD_STUDIO_INCLUDE_DIR}")
+	if(WIN32)
+		message(STATUS " - FMOD Core DLL: ${FMOD_CORE_DLL}, Logging: ${FMOD_CORE_LOGGING_DLL}")
+		message(STATUS " - FMOD Studio DLL: ${FMOD_STUDIO_DLL}, Logging: ${FMOD_STUDIO_LOGGING_DLL}")
+	endif()
 
     add_library(3rdParty::FMOD UNKNOWN IMPORTED GLOBAL)
-    set_target_properties(3rdParty::FMOD PROPERTIES
-		INTERFACE_INCLUDE_DIRECTORIES "${FMOD_CORE_INCLUDE_DIR}"
-        IMPORTED_LOCATION "${FMOD_CORE_LIBRARY}"
-        IMPORTED_LOCATION_DEBUG "${FMOD_CORE_LIBRARY_LOGGING}")
+	if(WIN32)
+		set_target_properties(3rdParty::FMOD PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${FMOD_CORE_INCLUDE_DIR}"
+			IMPORTED_LOCATION "${FMOD_CORE_DLL}"
+			IMPORTED_LOCATION_DEBUG "${FMOD_CORE_LOGGING_DLL}"
+			IMPORTED_IMPLIB "${FMOD_CORE_LIBRARY}"
+			IMPORTED_IMPLIB_DEBUG "${FMOD_CORE_LIBRARY_LOGGING}")
+	else()
+		set_target_properties(3rdParty::FMOD PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${FMOD_CORE_INCLUDE_DIR}"
+			IMPORTED_LOCATION "${FMOD_CORE_LIBRARY}"
+			IMPORTED_LOCATION_DEBUG "${FMOD_CORE_LIBRARY_LOGGING}")
+	endif()
     ly_target_include_system_directories(TARGET 3rdParty::FMOD INTERFACE ${FMOD_CORE_INCLUDE_DIR})
-
-    add_library(3rdParty::FMODStudio UNKNOWN IMPORTED GLOBAL)
-    set_target_properties(3rdParty::FMODStudio PROPERTIES
-		INTERFACE_INCLUDE_DIRECTORIES "${FMOD_STUDIO_INCLUDE_DIR}"
-        IMPORTED_LOCATION "${FMOD_STUDIO_LIBRARY}"
-        IMPORTED_LOCATION_DEBUG "${FMOD_STUDIO_LIBRARY_LOGGING}")
+    
+	add_library(3rdParty::FMODStudio UNKNOWN IMPORTED GLOBAL)
+	if(WIN32)
+		set_target_properties(3rdParty::FMODStudio PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${FMOD_STUDIO_INCLUDE_DIR}"
+			IMPORTED_LOCATION "${FMOD_STUDIO_DLL}"
+			IMPORTED_LOCATION_DEBUG "${FMOD_STUDIO_LOGGING_DLL}"
+			IMPORTED_IMPLIB "${FMOD_STUDIO_LIBRARY}"
+			IMPORTED_IMPLIB_DEBUG "${FMOD_STUDIO_LIBRARY_LOGGING}")
+	else()
+	    set_target_properties(3rdParty::FMODStudio PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${FMOD_STUDIO_INCLUDE_DIR}"
+			IMPORTED_LOCATION "${FMOD_STUDIO_LIBRARY}"
+			IMPORTED_LOCATION_DEBUG "${FMOD_STUDIO_LIBRARY_LOGGING}")
+	endif()
     ly_target_include_system_directories(TARGET 3rdParty::FMODStudio INTERFACE ${FMOD_STUDIO_INCLUDE_DIR})
 endif()

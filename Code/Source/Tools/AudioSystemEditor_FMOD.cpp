@@ -179,7 +179,7 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     return AudioControls::AUDIO_IMPL_INVALID_TYPE;
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl([[maybe_unused]]AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
 {
     if(middlewareControl)
     {
@@ -199,7 +199,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
     return nullptr;
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, [[maybe_unused]] AudioControls::EACEControlType atlControlType)
 {
     if(node)
     {
@@ -292,7 +292,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     return nullptr;
 }
 
-AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
+AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, [[maybe_unused]] const AudioControls::EACEControlType atlControlType)
 {
     const IAudioSystemControl* control = GetControl(connection->GetID());
     if(control)
@@ -415,7 +415,7 @@ void CAudioSystemEditor_FMOD::DataSaved()
 
 }
 
-QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, AudioControls::EACEControlType atlControlType)
+QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, [[maybe_unused]] AudioControls::EACEControlType atlControlType)
 {
     if(!connection)
         return nullptr;
