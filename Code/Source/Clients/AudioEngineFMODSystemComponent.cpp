@@ -9,7 +9,7 @@
 #include <IAudioSystem.h>
 
 #include "Engine/AudioSystemImpl_FMOD.h"
-#include "Engine/ConfigFMOD.h"
+//#include "Engine/ConfigFMOD.h"
 
 #include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
@@ -26,7 +26,7 @@ namespace AudioEngineFMOD
                 ;
         }
 
-        FMODLocaleConfig::Reflect(context);
+        //FMODLocaleConfig::Reflect(context);
     }
 
     void AudioEngineFMODSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

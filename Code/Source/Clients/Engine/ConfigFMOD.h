@@ -18,6 +18,7 @@ namespace AudioEngineFMOD
     const AZStd::string_view GetFMODBanksRootPath();
     void SetBanksRootPath(const AZStd::string_view path);
 
+#if 0
     struct FMODLocaleConfig
     {
         AZ_TYPE_INFO(FMODLocaleConfig, "{A74FC07B-3D76-43FC-B25A-8FD9AB293926}");
@@ -43,4 +44,5 @@ namespace AudioEngineFMOD
         //Serialized Data:
         AZStd::vector<LocalizationMapping> m_localeMappings;
     };
+#endif
 }

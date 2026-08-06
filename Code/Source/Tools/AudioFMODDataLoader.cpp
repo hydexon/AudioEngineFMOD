@@ -62,6 +62,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     {
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT));
                     }*/
+                    //TODO: VCAs
 
                     const auto& banks = root["banks"].GetArray();
                     for(const auto& bnk : banks)

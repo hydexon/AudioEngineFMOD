@@ -16,6 +16,11 @@ namespace AudioEngineFMOD
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
     {
+        explicit SATLEventData_FMOD(const Audio::TAudioControlID AudioEvtId)
+            : m_eventId(AudioEvtId)
+        {};
+
+        Audio::TAudioEventID m_eventId;
         AZStd::string atlName;
         AZStd::fixed_string<256> m_eventPath;
         FMOD::Studio::EventDescription* m_eventDescription = nullptr;

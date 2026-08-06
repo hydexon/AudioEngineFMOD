@@ -118,13 +118,6 @@ namespace AudioEngineFMOD
         const char *const
         GetAudioFileLocation(Audio::SATLAudioFileEntryInfo *fileEntryInfo) override;
 
-        Audio::EAudioLocalizationFindMethod
-        GetAudioFileLocalizationFindMethod() override {
-            return Audio::EAudioLocalizationFindMethod::FilenameBased; }
-
-        const char* GetAudioFilenameFixup(
-                Audio::IATLAudioFileEntryData* audioFileEntryData) override;
-
         Audio::IATLTriggerImplData *NewAudioTriggerImplData(
                 const AZ::rapidxml::xml_node<char> *audioTriggerNode) override;
 
@@ -198,19 +191,15 @@ namespace AudioEngineFMOD
         void OnAudioSystemRefresh() override;
 
     protected:
-        static const char* s_defaultFMODLocaleCode;
         AZStd::string m_assetPlatform;
         AZStd::string m_fmodBankPath;
+        AZStd::string m_localizedFMODBankPath;
+
         FMOD::Studio::System* m_studioSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;
 
-        AZStd::string_view m_currentFMODLocale;
-        AZStd::unordered_map<AZStd::string, AZStd::string> m_availableLocales;
-        AZStd::list<AZStd::string> m_loadedLocalizedBanksNames; //Hack to get around
-
         void SetBankPaths();
-        void LoadFMODLocaleMappings();
         void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
         void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
     };

@@ -55,13 +55,11 @@ namespace AudioEngineFMOD
     }
 
 
-const char* AudioSystemImpl_FMOD::s_defaultFMODLocaleCode = "EN";
 
 AudioSystemImpl_FMOD::AudioSystemImpl_FMOD(const char* assetPlatformName)
     : m_studioSystem(nullptr)
     , m_masterBank(nullptr)
     , m_masterStringsBank(nullptr)
-    , m_currentFMODLocale(s_defaultFMODLocaleCode)
 {
     AudioSystemImplementationRequestBus::Handler::BusConnect();
     AudioSystemImplementationNotificationBus::Handler::BusConnect();
@@ -107,7 +105,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    FMOD_STUDIO_ADVANCEDSETTINGS studioSettings;
+    FMOD_STUDIO_ADVANCEDSETTINGS studioSettings = { .cbsize = sizeof(FMOD_STUDIO_ADVANCEDSETTINGS) };
     m_studioSystem->getAdvancedSettings(&studioSettings);
 
     studioSettings.commandqueuesize  = CVars::s_FMODStudio_CommandQueueSize;
@@ -143,7 +141,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
                 );
 
     SetBankPaths();
-    LoadFMODLocaleMappings();
 
     result = m_studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
                                       CVars::s_FMODStudio_EnableProfiling ? FMOD_STUDIO_INIT_LIVEUPDATE : FMOD_STUDIO_INIT_NORMAL,
@@ -198,7 +195,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
         masterBus->stopAllEvents(FMOD_STUDIO_STOP_ALLOWFADEOUT);
         return EAudioRequestStatus::Success;
     }
-
     return EAudioRequestStatus::Success;
 }
 
@@ -551,26 +547,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             AZStd::string bankBaseName = audioFileEntryName;
             AZ::StringFunc::Path::ReplaceExtension(bankBaseName, "");
 
-            if(isLocalized)
-            {
-                /*
-                 * HACK: Due we can't modify audioFileEntry because is a C string reference from the Audio Control XML file
-                 *       we're reading from, expected due the Wwise behavior the ATL replicates from, where every localized
-                 *       soundbank, audio file has their own localized folder, unlike FMOD's where localized banks has an
-                 *       locale code postfix like Dialogue_EN.bank, Dialogue_JP.bank and Dialogue_CN.bank and so on, instead.
-                 *
-                 *       As a solution we have our own pool of strings handled by this class with the modified strings to locate
-                 *       the banks easily without modifying the ATL API or other nastier hacks more than this.
-                 */
-                m_loadedLocalizedBanksNames.emplace_back();
-                auto& localizedBankName = m_loadedLocalizedBanksNames.back();
-
-                localizedBankName = AZStd::string::format("%s_%s.bank", bankBaseName.c_str(), m_currentFMODLocale.data());
-                AZ_Printf("FMODAudioSystem", "New Bank Name for Localized Bank (%s): %s", m_currentFMODLocale.data(), localizedBankName.data());
-
-                audioFileEntryName = localizedBankName.c_str();
-            }
-
             fileEntryInfo->bLocalized = isLocalized;
             fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
             fileEntryInfo->sFileName = audioFileEntryName;
@@ -593,29 +569,13 @@ void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldA
 }
 
 const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo) {
+
     if(fileEntryInfo)
     {
-        return m_fmodBankPath.c_str();
+        return fileEntryInfo->bLocalized ? m_localizedFMODBankPath.c_str() : m_fmodBankPath.c_str();
     }
 
     return nullptr;
-}
-
-const char *AudioSystemImpl_FMOD::GetAudioFilenameFixup(Audio::IATLAudioFileEntryData *audioFileEntryData)
-{
-    const char* result = nullptr;
-    auto* fmodFileData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntryData);
-
-    if(fmodFileData)
-    {
-        m_loadedLocalizedBanksNames.emplace_back();
-        auto& localizedBankName = m_loadedLocalizedBanksNames.back();
-
-        localizedBankName = AZStd::string::format("%s_%s.bank", fmodFileData->m_baseBankName.c_str(), m_currentFMODLocale.data());
-        result = localizedBankName.c_str();
-    }
-
-    return result;
 }
 
 IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode) {
@@ -727,8 +687,8 @@ void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldLi
     azdestroy(oldListenerData, Audio::AudioImplAllocator, SATLListenerData_FMOD);
 }
 
-IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData([[maybe_unused]] TAudioEventID eventID) {
-    auto audioEventData = azcreate(SATLEventData_FMOD, (), Audio::AudioImplAllocator);
+IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData(TAudioEventID eventID) {
+    auto audioEventData = azcreate(SATLEventData_FMOD, (eventID), Audio::AudioImplAllocator);
     return audioEventData;
 }
 
@@ -740,21 +700,26 @@ void AudioSystemImpl_FMOD::ResetAudioEventData(IATLEventData *eventData) {
     auto event = static_cast<SATLEventData_FMOD*>(eventData);
     if(event)
     {
-        *event = SATLEventData_FMOD();
+        event->m_eventDescription = nullptr;
+        event->m_eventPath = AZStd::fixed_string<256>();
+        event->m_currentInstance = nullptr;
+        event->atlName = "";
+        event->m_actionMode = FMODEventAction::Play;
+        event->m_stopMode   = FMOD_STUDIO_STOP_ALLOWFADEOUT;
     }
 }
 
 void AudioSystemImpl_FMOD::SetLanguage(const char *language) {
-    if(m_availableLocales.find(language) != m_availableLocales.end())
+    if(!language)
     {
-        m_currentFMODLocale = m_availableLocales[language];
-        AZ_Info("FMODAudioSystem", "SetLanguage changed!, New Locale Set: %s", m_availableLocales[language].c_str());
+        return;
     }
-    else
-    {
-        AZ_Error("FMODAudioSystem", false, "FMOD Locale Code for AudioSystem Language '%s' is missing or non-existing, defaulting to EN (English) instead", language);
-        m_currentFMODLocale = s_defaultFMODLocaleCode;
-    }
+
+    AZStd::string languageSubFolder(language);
+    languageSubFolder += "/";
+
+    m_localizedFMODBankPath = m_fmodBankPath;
+    m_localizedFMODBankPath.append(languageSubFolder);
 }
 
 const char * const AudioSystemImpl_FMOD::GetImplSubPath() const {
@@ -866,14 +831,12 @@ void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
         m_masterStringsBank = nullptr;
     }
 
-    m_loadedLocalizedBanksNames.clear();
-
 }
 
 void AudioSystemImpl_FMOD::SetBankPaths()
 {
     //Default:
-    // "Assets/Audio/FMOD/"
+    // "Assets/Audio/FMOD/Banks"
     AZStd::string bankPath = Constants::DefaultFMODBanksPath;
     // --                                 FMOD Banks Folder
     // assetPlatform -> windows   --|
@@ -919,33 +882,9 @@ void AudioSystemImpl_FMOD::SetBankPaths()
     }
 
     m_fmodBankPath = bankPath;
+    m_localizedFMODBankPath = bankPath;
+
     SetBanksRootPath(m_fmodBankPath);
-}
-
-void AudioSystemImpl_FMOD::LoadFMODLocaleMappings()
-{
-    //FMOD Root Path:
-    //'Assets/Audio/FMOD/'
-    AZStd::string rootPath   = Constants::DefaultFMODRootPath;
-    //'Assets/Audio/FMOD/FMODLocaleConfig.json'
-    AZStd::string configFile = rootPath + Constants::LocaleConfigFile;
-
-    if(AZ::IO::FileIOBase::GetInstance()
-            && AZ::IO::FileIOBase::GetInstance()->Exists(configFile.c_str()))
-    {
-        FMODLocaleConfig localeConfigs;
-        if(localeConfigs.Load(configFile))
-        {
-            for(const auto& localesMap : localeConfigs.m_localeMappings)
-            {
-                m_availableLocales[localesMap.m_languageName] = localesMap.m_localeCode;
-            }
-        }
-    }
-    else
-    {
-        AZ_Error("FMODAudioSystem", false, "Failed to find '%s' to load locales", configFile.c_str());
-    }
 }
 
 void AudioSystemImpl_FMOD::StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData *sndObj)
