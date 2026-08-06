@@ -21,6 +21,20 @@ namespace AudioEngineFMOD
         bool m_loadSampleData;
     };
 
+    class CFMODEventParamRTPC : public AudioControls::IAudioConnection
+    {
+    public:
+        explicit CFMODEventParamRTPC(AudioControls::CID id)
+            : AudioControls::IAudioConnection(id)
+        {}
+
+        ~CFMODEventParamRTPC() = default;
+        bool HasProperties() override { return true; }
+
+        bool perObject = false;
+        AZStd::string m_paramName = "";
+    };
+
     //TODO: Snapshot Connection?
 
     class CFMODEventConnection : public AudioControls::IAudioConnection
@@ -37,6 +51,7 @@ namespace AudioEngineFMOD
         ~CFMODEventConnection() = default;
         bool HasProperties() override { return true; }
 
+        bool m_isSnapshot;
         FMODEventAction m_action;
         bool m_loadSampleData;
         FMOD_STUDIO_STOP_MODE m_stopMode;

@@ -9,16 +9,19 @@ namespace AudioEngineFMOD
 {
     namespace XMLTags
     {
-        static constexpr const char* FMODEventTag = "FMODStudioEvent";
-        static constexpr const char* FMODParameterTag = "FMODStudioParameter";
-        static constexpr const char* FMODStudioBankTag = "FMODStudioBankFile";
+        static constexpr const char* FMODEventTag = "FMODEvent";
+        static constexpr const char* FMODParameterTag = "FMODParameter";
+        static constexpr const char* FMODStudioBankTag = "FMODBankFile";
         static constexpr const char* FMODFileTag = "FMODAudioFile";
 
-        static constexpr const char* FMODPathAttribute = "path";
-        static constexpr const char* FMODLocalizedAttribute = "localized";
+        static constexpr const char* FMODSnapshotAttr = "IsSnapshot";
+        static constexpr const char* FMODPathAttribute = "Path";
+        static constexpr const char* FMODLocalizedAttribute = "Localized";
         static constexpr const char* FMODSamplePreloadAttr = "loadSampleData";
-        static constexpr const char* FMODStopMode = "stopMode";
-        static constexpr const char* FMODEvtAction = "eventAction";
+        static constexpr const char* FMODStopMode = "StopMode";
+        static constexpr const char* FMODEvtAction = "EventAction";
+        static constexpr const char* FMODParamAttr = "Parameter";
+        static constexpr const char* FMODPerObjectAttr = "PerObject";
     }
 
     struct FMOD_GUID_CmpEqual {

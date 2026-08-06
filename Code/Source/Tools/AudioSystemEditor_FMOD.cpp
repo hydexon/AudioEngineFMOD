@@ -4,6 +4,7 @@
 #include <AzCore/Utils/Utils.h>
 #include <IAudioSystem.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/Console/IConsole.h>
 
 #include "../Clients/Engine/Common_FMOD.h"
 #include "AudioConnections.h"
@@ -61,8 +62,11 @@ CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
     : QObject()
 {
     InitFMODResources();
-    m_loader.Load(this);
 
+    m_localizedParentControl.SetParent(&m_rootControl);
+    m_rootControl.AddChild(&m_localizedParentControl);
+
+    m_loader.Load(this, &m_rootControl, &m_localizedParentControl);
 }
 
 void CAudioSystemEditor_FMOD::Reload()
@@ -78,8 +82,23 @@ void CAudioSystemEditor_FMOD::Reload()
         }
     }
 
-    m_loader.Load(this);
+    m_loader.Load(this,&m_rootControl, &m_localizedParentControl);
+    {
+        m_currentLanguageName.clear();
+        if(auto console = AZ::Interface<AZ::IConsole>::Get())
+        {
+            console->GetCvarValue("g_languageAudio", m_currentLanguageName);
+            AZStd::to_lower(m_currentLanguageName.begin(), m_currentLanguageName.end());
+        }
 
+        AZStd::string parentName = "Localized Banks";
+        if(!m_currentLanguageName.empty())
+        {
+            parentName += AZStd::string::format(" (%s)", m_currentLanguageName.c_str());
+        }
+
+        m_localizedParentControl.SetName(parentName);
+    }
     m_connectionsByID.clear();
 }
 
@@ -150,6 +169,7 @@ AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioC
 {
     switch(type)
     {
+    case eFMOD_SNAPSHOT:
     case eFMOD_EVENT:
         return AudioControls::eACET_TRIGGER;
     case eFMOD_PARAMETER:
@@ -170,7 +190,7 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     case AudioControls::eACET_TRIGGER:
         return eFMOD_EVENT | eFMOD_SNAPSHOT;
     case AudioControls::eACET_RTPC:
-        return eFMOD_PARAMETER;
+        return eFMOD_PARAMETER | eFMOD_EVENT | eFMOD_SNAPSHOT;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
     default:
@@ -179,7 +199,7 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     return AudioControls::AUDIO_IMPL_INVALID_TYPE;
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl([[maybe_unused]]AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
 {
     if(middlewareControl)
     {
@@ -190,8 +210,18 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
         {
         case eFMOD_SOUNDBANK:
             return AZStd::make_shared<CFMODBankConnection>(middlewareControl->GetId());
-        case eFMOD_EVENT:
-            return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
+        case eFMOD_SNAPSHOT:
+        case eFMOD_EVENT: {
+            switch(atlControlType)
+            {
+            case eACET_TRIGGER:
+                return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
+            case eACET_RTPC:
+                return AZStd::make_shared<CFMODEventParamRTPC>(middlewareControl->GetId());
+            default:
+                break;
+            }
+        }
         default:
             return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
         }
@@ -199,178 +229,202 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
     return nullptr;
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, [[maybe_unused]] AudioControls::EACEControlType atlControlType)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType)
 {
-    if(node)
+    using namespace Audio;
+    if(!node)
     {
-        AZStd::string_view element(node->name());
-        TImplControlType type = TagToType(element);
-        if(type != AUDIO_IMPL_INVALID_TYPE)
+        return nullptr;
+    }
+
+    IAudioSystemControl* control = nullptr;
+    TConnectionPtr connection;
+
+    AZStd::string_view element(node->name());
+    TImplControlType type = TagToType(element);
+
+    //Connections from FMODEvent:
+    if(type != AUDIO_IMPL_INVALID_TYPE)
+    {
+        auto attr = node->first_attribute(XMLTags::FMODPathAttribute, 0, false);
+        if(!attr || attr->value()[0] == '\0')
         {
-            AZStd::string name;
-            AZStd::string_view localized;
+            return nullptr;
+        }
 
-            if(auto nameAttr = node->first_attribute(XMLTags::FMODPathAttribute, 0, false);
-                    nameAttr != nullptr)
+        const char* controlName = attr->value();
+
+        attr = node->first_attribute(XMLTags::FMODLocalizedAttribute);
+        bool isLocalized = attr ? AZ::StringFunc::Equal(attr->value(), "true") : false;
+
+        control = GetControlByName(controlName, isLocalized);
+        if(!control)
+        {
+            control = CreateControl(SControlDef(controlName, type));
+            if(control)
             {
-                name = nameAttr->value();
-            }
-
-            if(auto localizedAttr = node->first_attribute(XMLTags::FMODLocalizedAttribute, 0, false);
-                    localizedAttr != nullptr)
-            {
-                localized =  localizedAttr->value();
-            }
-
-            bool isLocalized = AZ::StringFunc::Equal(localized, "true");
-
-            IAudioSystemControl* ctrl = GetControlByName(name, isLocalized);
-            if(!ctrl)
-            {
-                ctrl = CreateControl(SControlDef(name, type));
-                if(ctrl)
-                {
-                    ctrl->SetPlaceholder(true);
-                    ctrl->SetLocalized(isLocalized);
-                }
-            }
-
-            //TODO: Deal with the roughest equivalent of Switch Groups, Switch States,etc.
-
-            if(ctrl)
-            {
-                ctrl->SetConnected(true);
-                ++m_connectionsByID[ctrl->GetId()];
-
-                //TODO: Special IAudioConnection derived if eFMOD_PARAMETER?
-                //      Also deal with Switches and States.
-                switch(type)
-                {
-                    case eFMOD_SOUNDBANK: {
-                        auto conn = AZStd::make_shared<CFMODBankConnection>(ctrl->GetId());
-                        if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr); lsdAttr != nullptr)
-                        {
-                            AZStd::string_view lsdStr = lsdAttr->value();
-                            bool isLsd = AZ::StringFunc::Equal(lsdStr, "true"); //Not the acid.
-                            conn->m_loadSampleData = isLsd;
-                        }
-                        return conn;
-                    }
-                    case eFMOD_EVENT: {
-                        auto conn = AZStd::make_shared<CFMODEventConnection>(ctrl->GetId());
-                        if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr);
-                                lsdAttr != nullptr)
-                        {
-                            AZStd::string_view lsdStr = lsdAttr->value();
-                            bool isLsd = AZ::StringFunc::Equal(lsdStr, "true");
-                            conn->m_loadSampleData = isLsd;
-                        }
-
-                        if(auto actionAttr = node->first_attribute(XMLTags::FMODEvtAction);
-                                actionAttr != nullptr)
-                        {
-                            AZStd::string_view actionStr = actionAttr->value();
-                            conn->m_action = Utils::GetActionFromXmlStr(actionStr);
-                        }
-
-                        if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
-                                stopAttr != nullptr)
-                        {
-                            AZStd::string_view stopModeStr = stopAttr->value();
-                            conn->m_stopMode = AZ::StringFunc::Equal(stopModeStr, "AllowFadeout") ?
-                                        FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE;
-                        }
-                        return conn;
-                    }
-
-                    default: break;
-                }
-                return AZStd::make_shared<IAudioConnection>(ctrl->GetId());
+                control->SetPlaceholder(true);
+                control->SetLocalized(isLocalized);
             }
         }
+
+        if(control)
+        {
+            control->SetConnected(true);
+            ++m_connectionsByID[control->GetId()];
+
+            switch(type)
+            {
+            case eFMOD_SOUNDBANK: {
+                auto conn = AZStd::make_shared<CFMODBankConnection>(control->GetId());
+                if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr); lsdAttr != nullptr)
+                {
+                    AZStd::string_view lsdStr = lsdAttr->value();
+                    bool isLsd = AZ::StringFunc::Equal(lsdStr, "true"); //Not the acid.
+                    conn->m_loadSampleData = isLsd;
+                }
+                return conn;
+            }
+            case eFMOD_SNAPSHOT:
+            case eFMOD_EVENT: {
+                if(atlControlType == AudioControls::eACET_TRIGGER)
+                {
+                    auto conn = AZStd::make_shared<CFMODEventConnection>(control->GetId());
+                    if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr);
+                            lsdAttr != nullptr)
+                    {
+                        AZStd::string_view lsdStr = lsdAttr->value();
+                        bool isLsd = AZ::StringFunc::Equal(lsdStr, "true");
+                        conn->m_loadSampleData = isLsd;
+                    }
+
+                    if(auto actionAttr = node->first_attribute(XMLTags::FMODEvtAction);
+                            actionAttr != nullptr)
+                    {
+                        AZStd::string_view actionStr = actionAttr->value();
+                        conn->m_action = Utils::GetActionFromXmlStr(actionStr);
+                    }
+
+                    if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
+                            stopAttr != nullptr)
+                    {
+                        AZStd::string_view stopModeStr = stopAttr->value();
+                        conn->m_stopMode = AZ::StringFunc::Equal(stopModeStr, "AllowFadeout") ?
+                                    FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE;
+                    }
+
+                    if(auto isSnapAttr = node->first_attribute(XMLTags::FMODSnapshotAttr);
+                            isSnapAttr != nullptr)
+                    {
+                        conn->m_isSnapshot = AZ::StringFunc::Equal(isSnapAttr->value(), "true");
+                    }
+                    return conn;
+                }
+                else //AudioControls::eACET_RTPC
+                {
+                    auto conn = AZStd::make_shared<CFMODEventParamRTPC>(control->GetId());
+                    if(auto paramAttr = node->first_attribute(XMLTags::FMODParamAttr);
+                            paramAttr != nullptr)
+                    {
+                        conn->m_paramName = paramAttr->value();
+                    }
+                    return conn;
+                }
+
+            }
+            default:
+                break;
+            }
+        }
+        return AZStd::make_shared<IAudioConnection>(control->GetId());
     }
+
     return nullptr;
 }
 
 AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, [[maybe_unused]] const AudioControls::EACEControlType atlControlType)
 {
     const IAudioSystemControl* control = GetControl(connection->GetID());
-    if(control)
+    if(!control)
     {
-        XmlAllocator& xmlAlloc(AudioControls::s_xmlAllocator);
-        switch(control->GetType())
+        return nullptr;
+    }
+
+    XmlAllocator& xmlAlloc(AudioControls::s_xmlAllocator);
+
+    switch(control->GetType())
+    {
+    case eFMOD_SNAPSHOT:
+    case eFMOD_EVENT:
+    {
+        auto connNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element);
+        connNode->name(XMLTags::FMODEventTag);
+
+        auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::FMODPathAttribute, xmlAlloc.allocate_string(control->GetName().c_str()));
+        connNode->append_attribute(pathAttr);
+
+        auto locAttr = xmlAlloc.allocate_attribute(XMLTags::FMODLocalizedAttribute,
+                                                   xmlAlloc.allocate_string(
+                                                       control->IsLocalized() ? "true" : "false"));
+        connNode->append_attribute(locAttr);
+
+        auto isSnapshotAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSnapshotAttr, xmlAlloc.allocate_string(control->GetType() == eFMOD_SNAPSHOT ? "true" : "false"));
+        connNode->append_attribute(isSnapshotAttr);
+
+        switch(atlControlType)
         {
-            case eFMOD_EVENT:
-            {
-                auto connectionNode = xmlAlloc.allocate_node(
-                            AZ::rapidxml::node_element,
-                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data()));
+        case eACET_TRIGGER: {
+            auto conn = static_cast<const CFMODEventConnection*>(connection.get());
+            AZ_Assert(conn, "CFMODEventConnection is a invalid cast!");
 
-                auto pathAttr = xmlAlloc.allocate_attribute(
-                            XMLTags::FMODPathAttribute,
-                            xmlAlloc.allocate_string(control->GetName().c_str())
-                            );
+            auto actionStr  = Utils::GetXmlStrFromAction(conn->m_action);
+            auto actionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction, xmlAlloc.allocate_string(actionStr.c_str()));
+            connNode->append_attribute(actionAttr);
 
-                connectionNode->append_attribute(pathAttr);
+            auto stopModeAttr = xmlAlloc.allocate_attribute(XMLTags::FMODStopMode, xmlAlloc.allocate_string(conn->m_stopMode == FMOD_STUDIO_STOP_ALLOWFADEOUT ? "AllowFadeout" : "Immediate"));
+            connNode->append_attribute(stopModeAttr);
 
-                auto conn = static_cast<const CFMODEventConnection*>(connection.get());
-                auto loadSampleDataAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSamplePreloadAttr,
-                                                                      xmlAlloc.allocate_string(
-                                                                          conn->m_loadSampleData ? "true" : "false"));
-
-                connectionNode->append_attribute(loadSampleDataAttr);
-
-                auto actionStr = Utils::GetXmlStrFromAction(conn->m_action);
-                auto evtActionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction,
-                                                                 xmlAlloc.allocate_string(actionStr.c_str()));
-
-                connectionNode->append_attribute(evtActionAttr);
-
-
-                auto evtStopMode = xmlAlloc.allocate_attribute(XMLTags::FMODStopMode,
-                                                                xmlAlloc.allocate_string(
-                                                                    conn->m_stopMode == FMOD_STUDIO_STOP_ALLOWFADEOUT ? "AllowFadeout" : "Immediate"));
-                connectionNode->append_attribute(evtStopMode);
-
-                return connectionNode;
-            }
-            case eFMOD_SOUNDBANK:
-            {
-                auto connectionNode = xmlAlloc.allocate_node(
-                            AZ::rapidxml::node_element,
-                            xmlAlloc.allocate_string(TypeToTag(control->GetType()).data()));
-
-                auto pathAttr = xmlAlloc.allocate_attribute(
-                            XMLTags::FMODPathAttribute,
-                            xmlAlloc.allocate_string(control->GetName().c_str())
-                            );
-
-                connectionNode->append_attribute(pathAttr);
-
-                if(control->IsLocalized())
-                {
-                    auto locAttr = xmlAlloc.allocate_attribute(
-                                XMLTags::FMODLocalizedAttribute,
-                                xmlAlloc.allocate_string("true")
-                                );
-
-                    connectionNode->append_attribute(locAttr);
-                }
-                auto conn = static_cast<const CFMODBankConnection*>(connection.get());
-                auto preloadSampleDataAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSamplePreloadAttr,
-                                                                         xmlAlloc.allocate_string(
-                                                                             conn->m_loadSampleData ? "true" : "false"
-                                                                             ));
-                connectionNode->append_attribute(preloadSampleDataAttr);
-
-                return connectionNode;
-            }
-            default:
-            {
-                AZ_Warning("FMODAudioSystem", false, "Support to create XML node for '%s' not implemented yet!", TypeToTag(control->GetType()).data());
-                break;
-            }
+            auto snapAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSnapshotAttr, xmlAlloc.allocate_string(conn->m_isSnapshot ? "true" : "false"));
+            connNode->append_attribute(snapAttr);
+            return connNode;
         }
+        case eACET_RTPC: {
+            auto conn = static_cast<const CFMODEventParamRTPC*>(connection.get());
+            AZ_Assert(conn, "CFMODEventParamRTPC is a invalid cast!");
+
+            auto paramNameAttr = xmlAlloc.allocate_attribute(XMLTags::FMODParamAttr, xmlAlloc.allocate_string(conn->m_paramName.c_str()));
+            connNode->append_attribute(paramNameAttr);
+
+            return connNode;
+        }
+        case eACET_SWITCH_STATE:
+        case eACET_ENVIRONMENT:
+        case eACET_SWITCH:
+        default:
+            break;
+        }
+        break;
+    }
+    case eFMOD_PARAMETER: { //Global FMOD Parameters
+        auto connNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element);
+        connNode->name(XMLTags::FMODParameterTag);
+
+        auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::FMODPathAttribute, xmlAlloc.allocate_string(control->GetName().c_str()));
+        connNode->append_attribute(pathAttr);
+
+        return connNode;
+    }
+    case eFMOD_SOUNDBANK: {
+        auto connNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element);
+        connNode->name(XMLTags::FMODStudioBankTag);
+
+        auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::FMODPathAttribute, xmlAlloc.allocate_string(control->GetName().c_str()));
+        connNode->append_attribute(pathAttr);
+
+        return connNode;
+    }
+    default:
+        return nullptr;
     }
     return nullptr;
 }
@@ -429,11 +483,28 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
         case eFMOD_SOUNDBANK:
             return new LoadSampleDataForm(connection);
         case eFMOD_EVENT:
-        case eFMOD_SNAPSHOT:
-            return new EventPropertiesForm(connection, control->GetType());
+        case eFMOD_SNAPSHOT: {
+            if(atlControlType == AudioControls::eACET_TRIGGER)
+                return new EventPropertiesForm(connection, control->GetType());
+            else //eACET_RTPC.
+                return nullptr; //new EventRTPCPropertiesForm;
+        }
         default:
             return nullptr;
     }
+}
+
+bool CAudioSystemEditor_FMOD::IsFMODParameterGlobal(const AZStd::string_view paramPath)
+{
+    for(auto& localParam : m_loader.GetEventParameters())
+    {
+        if(localParam == paramPath)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const

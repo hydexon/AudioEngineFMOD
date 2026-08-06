@@ -12,14 +12,19 @@
 namespace AudioEngineFMOD
 {
 
-void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD *audioSystemImpl)
+void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD *audioSystemImpl, AudioControls::IAudioSystemControl *parent, AudioControls::IAudioSystemControl *locParent)
 {
     m_audioSystemImpl = audioSystemImpl;
     const AZ::IO::FixedMaxPath RootFMODPath { m_audioSystemImpl->GetDataPath() };
-    LoadControlsForEvents(AZ::IO::FixedMaxPath { RootFMODPath / "FMODProjectInfo.json" }.Native());
+    LoadControlsForEvents(AZ::IO::FixedMaxPath { RootFMODPath / "FMODProjectInfo.json" }.Native(), parent, locParent);
 }
 
-void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPath)
+const AZStd::vector<AZStd::string> &CAudioFMODDataLoader::GetEventParameters()
+{
+    return m_eventParameters;
+}
+
+void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPath, AudioControls::IAudioSystemControl *parent, AudioControls::IAudioSystemControl *locParent)
 {
     bool failedOpenFile = false;
 
@@ -47,7 +52,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
 
                     for(const auto& event : eventArr)
                     {
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(event.GetString(), eFMOD_EVENT));
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(event.GetString(), eFMOD_EVENT, false, nullptr, "Events"));
                     }
 
                     /*
@@ -56,12 +61,12 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     {
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(bus.GetString(), eFMOD_AUXBUS));
                     }
-
+                    */
                     const auto& snapshotsArr = root["snapshots"].GetArray();
                     for(const auto& snapshot : snapshotsArr)
                     {
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT));
-                    }*/
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT, false, parent, "Snapshots"));
+                    }
                     //TODO: VCAs
 
                     const auto& banks = root["banks"].GetArray();
@@ -74,12 +79,14 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                         }
 
                         const auto bankNameWithExt = AZStd::string::format("%s.bank", bank["name"].GetString());
+                        const bool isLocalized = bank["isLocalized"].GetBool();
                         m_audioSystemImpl->CreateControl(
                                     AudioControls::SControlDef(
                                         bankNameWithExt.c_str(),
                                         eFMOD_SOUNDBANK,
-                                        bank["isLocalized"].GetBool()
-                                        )
+                                        isLocalized,
+                                        isLocalized ? locParent : parent,
+                                        "Banks")
                                     );
                     }
 
@@ -87,7 +94,12 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     for(const auto& param : params)
                     {
                         const auto& obj = param.GetObject();
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(obj["path"].GetString(),eFMOD_PARAMETER));
+                        if(!obj["isGlobal"].GetBool())
+                        {
+                            m_eventParameters.push_back(obj["path"].GetString());
+                        }
+
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(obj["path"].GetString(),eFMOD_PARAMETER, false, parent, "Parameters"));
                     }
 
 
