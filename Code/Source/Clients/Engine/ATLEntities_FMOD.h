@@ -4,14 +4,33 @@
 #include <fmod_studio.hpp>
 #include "Common_FMOD.h"
 
+#include <AzCore/XML/rapidxml.h>
+
 namespace AudioEngineFMOD
 {
-
+    typedef AZStd::fixed_string<256> FixedEventPath;
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
         FMOD_3D_ATTRIBUTES m_3dAttributes = {};
         AZStd::vector<FMOD::Studio::EventInstance*> m_activeInstances;
         //AZStd::unordered_multimap<FMOD_GUID, FMOD::Studio::EventInstance*, FMOD_GUID_CmpEqual, FMOD_GUID_Hashing> m_instances;
+    };
+
+    enum class RtpcImpl {
+        SingleEvent,
+        PerObject,
+        Global,
+        Unknown
+    };
+
+    struct SATLAudioRtpcImplData_FMOD : public Audio::IATLRtpcImplData
+    {
+        RtpcImpl m_type;
+        FMOD_GUID m_paramGUID;
+        AZStd::string m_paramPath;
+        FixedEventPath m_singleEvtPath;
+
+        bool ReadFromXml(const AZ::rapidxml::xml_node<char>& node);
     };
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
@@ -22,7 +41,7 @@ namespace AudioEngineFMOD
 
         Audio::TAudioEventID m_eventId;
         AZStd::string atlName;
-        AZStd::fixed_string<256> m_eventPath;
+        FixedEventPath m_eventPath;
         FMOD::Studio::EventDescription* m_eventDescription = nullptr;
         FMOD::Studio::EventInstance* m_currentInstance = nullptr;
         FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
@@ -33,7 +52,7 @@ namespace AudioEngineFMOD
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
         AZStd::string atlName;
-        AZStd::fixed_string<256> m_eventPath;
+        FixedEventPath m_eventPath;
         FMOD_GUID m_eventGUID;
         bool m_preloadSampleData = false;
         FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;

@@ -390,7 +390,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState([[maybe_unused]] IATLAu
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
-    AZ_Warning("FMODAudioSystem", false, "Set Obstruction is not supported yet in this FMOD implementation, only occlusion");
+    AZ_WarningOnce("FMODAudioSystem", false, "Set Obstruction is not supported yet in this FMOD implementation, only occlusion");
     auto fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
 
     constexpr float ObstructionOcclusionMin = 0.0f;
@@ -444,6 +444,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLRtpcImplData *rtpcData) {
+
     return EAudioRequestStatus::Success;
 }
 
@@ -625,13 +626,29 @@ void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTr
     azdestroy(oldTriggerData, Audio::AudioImplAllocator, SATLTriggerImplData_FMOD);
 }
 
-IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioRtpcNode) {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
+IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode) {
+
+    if(!audioRtpcNode)
+    {
+        return nullptr;
+    }
+
+    auto rtpcData = azcreate(SATLAudioRtpcImplData_FMOD, (), Audio::AudioImplAllocator);
+    if(!rtpcData)
+    {
+        return nullptr;
+    }
+
+    if(!rtpcData->ReadFromXml(*audioRtpcNode))
+    {
+        azdestroy(rtpcData, Audio::AudioImplAllocator, SATLAudioRtpcImplData_FMOD);
+        return nullptr;
+    }
+    return rtpcData;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData([[maybe_unused]] IATLRtpcImplData *oldRtpcData) {
-    // TODO: Implement this pure virtual method.
+void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData) {
+    azdestroy(oldRtpcData, Audio::AudioImplAllocator, SATLAudioRtpcImplData_FMOD);
 }
 
 IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioSwitchStateNode) {
@@ -701,7 +718,7 @@ void AudioSystemImpl_FMOD::ResetAudioEventData(IATLEventData *eventData) {
     if(event)
     {
         event->m_eventDescription = nullptr;
-        event->m_eventPath = AZStd::fixed_string<256>();
+        event->m_eventPath = FixedEventPath();
         event->m_currentInstance = nullptr;
         event->atlName = "";
         event->m_actionMode = FMODEventAction::Play;
