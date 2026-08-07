@@ -35,7 +35,19 @@ namespace AudioEngineFMOD
         AZStd::string m_paramName = "";
     };
 
-    //TODO: Snapshot Connection?
+    class CFMODParamRTPC : public AudioControls::IAudioConnection
+    {
+    public:
+        explicit CFMODParamRTPC(AudioControls::CID id)
+            : AudioControls::IAudioConnection(id)
+            , m_isGlobal(false)
+        {}
+
+        ~CFMODParamRTPC() = default;
+        bool HasProperties() override { return true; }
+
+        bool m_isGlobal;
+    };
 
     class CFMODEventConnection : public AudioControls::IAudioConnection
     {

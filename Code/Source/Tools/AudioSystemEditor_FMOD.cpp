@@ -330,7 +330,14 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                     }
                     return conn;
                 }
+            }
+            case eFMOD_PARAMETER: {
+                auto isGlobalAttr  = node->first_attribute(XMLTags::FMODIsGlobalParam);
+                bool isGlobalParam = isGlobalAttr ? AZ::StringFunc::Equal(isGlobalAttr->value(), "true") : false;
 
+                auto conn = AZStd::make_shared<CFMODParamRTPC>(control->GetId());
+                conn->m_isGlobal = isGlobalParam;
+                return conn;
             }
             default:
                 break;
@@ -405,12 +412,15 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
         }
         break;
     }
-    case eFMOD_PARAMETER: { //Global FMOD Parameters
+    case eFMOD_PARAMETER: { //Global and Per-Object FMOD Parameters
         auto connNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element);
         connNode->name(XMLTags::FMODParameterTag);
 
         auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::FMODPathAttribute, xmlAlloc.allocate_string(control->GetName().c_str()));
         connNode->append_attribute(pathAttr);
+
+        auto isGlobalAttr = xmlAlloc.allocate_attribute(XMLTags::FMODIsGlobalParam, xmlAlloc.allocate_string(IsFMODParameterGlobal(control->GetName()) ? "true" : "false"));
+        connNode->append_attribute(isGlobalAttr);
 
         return connNode;
     }
