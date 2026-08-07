@@ -24,11 +24,15 @@ public:
 signals:
     void PropertiesChanged();
 
+private slots:
+    void UpdateConnectionFromWidgets();
+
 private:
     Ui::EvtToRtpcParamsForm *ui;
     CAudioFMODDataLoader* m_loader;
     AudioControls::TConnectionPtr m_connection;
 
+    bool m_inUpdateWidgetsFromConnection = false;
     void UpdateWidgetsFromConnection();
 };
 }

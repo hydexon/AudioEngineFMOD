@@ -379,9 +379,16 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetMultiplePositions(IATLAudioObjectDa
     return EAudioRequestStatus::FailureInvalidRequest;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLRtpcImplData *rtpcData, [[maybe_unused]] float value) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::Success;
+EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData, float value) {
+    auto fmodObj  = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    auto fmodRtpc = static_cast<const SATLAudioRtpcImplData_FMOD*>(rtpcData);
+
+    if(fmodObj && fmodRtpc)
+    {
+
+        return EAudioRequestStatus::Success;
+    }
+    return EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLSwitchStateImplData *switchStateData) {
