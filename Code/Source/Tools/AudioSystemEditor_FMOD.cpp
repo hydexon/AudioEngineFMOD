@@ -11,6 +11,7 @@
 
 #include "ConnectionWidgets/LoadSampleDataForm.h"
 #include "ConnectionWidgets/EventPropertiesForm.h"
+#include "ConnectionWidgets/EvtToRtpcParamsForm.h"
 
 void InitFMODResources()
 {
@@ -515,7 +516,7 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
             if(atlControlType == AudioControls::eACET_TRIGGER)
                 return new EventPropertiesForm(connection, control->GetType());
             else //eACET_RTPC.
-                return nullptr; //new EventRTPCPropertiesForm;
+                return new EvtToRtpcParamsForm(connection, &m_loader);
         }
         default:
             return nullptr;

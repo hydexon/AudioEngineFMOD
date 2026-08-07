@@ -94,12 +94,23 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     for(const auto& param : params)
                     {
                         const auto& obj = param.GetObject();
+                        const AZStd::string paramName = obj["path"].GetString();
+
                         if(!obj["isGlobal"].GetBool())
                         {
-                            m_eventParameters.emplace(obj["path"].GetString(), obj["initialValue"].GetFloat());
+                            m_eventParameters.emplace(paramName, obj["initialValue"].GetFloat());
                         }
 
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(obj["path"].GetString(),eFMOD_PARAMETER, false, parent, "Parameters"));
+                        if(obj["labels"].IsArray())
+                        {
+                            auto labelArray = obj["labels"].GetArray();
+                            for(const auto& label : labelArray)
+                            {
+                                m_parameterLabels[paramName].push_back(label.GetString());
+                            }
+                        }
+
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(paramName,eFMOD_PARAMETER, false, parent, "Parameters"));
                     }
 
 

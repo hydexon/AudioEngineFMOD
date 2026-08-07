@@ -23,5 +23,6 @@ namespace AudioEngineFMOD
         CAudioSystemEditor_FMOD* m_audioSystemImpl = nullptr;
         //AZStd::vector<AZStd::string> m_eventParameters;
         AZStd::unordered_map<AZStd::string, float> m_eventParameters;
+        AZStd::unordered_map<AZStd::string, std::vector<AZStd::string>> m_parameterLabels;
     };
 }
