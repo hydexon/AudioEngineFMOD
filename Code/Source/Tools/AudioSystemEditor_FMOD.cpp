@@ -402,6 +402,15 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
             auto paramNameAttr = xmlAlloc.allocate_attribute(XMLTags::FMODParamAttr, xmlAlloc.allocate_string(conn->m_paramName.c_str()));
             connNode->append_attribute(paramNameAttr);
 
+            auto defaultValueIt = m_loader.GetEventParameters().find(conn->m_paramName);
+            float value = 0.0f;
+            if(defaultValueIt != m_loader.GetEventParameters().end())
+            {
+                value = defaultValueIt->second;
+            }
+            auto initValAttr  = xmlAlloc.allocate_attribute(XMLTags::FMODInitialValue, xmlAlloc.allocate_string(AZStd::to_string(value).c_str()));
+            connNode->append_attribute(initValAttr);
+
             return connNode;
         }
         case eACET_SWITCH_STATE:
@@ -421,6 +430,15 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
         auto isGlobalAttr = xmlAlloc.allocate_attribute(XMLTags::FMODIsGlobalParam, xmlAlloc.allocate_string(IsFMODParameterGlobal(control->GetName()) ? "true" : "false"));
         connNode->append_attribute(isGlobalAttr);
+
+        auto defaultValueIt = m_loader.GetEventParameters().find(control->GetName());
+        float value = 0.0f;
+        if(defaultValueIt != m_loader.GetEventParameters().end())
+        {
+            value = defaultValueIt->second;
+        }
+        auto initValAttr  = xmlAlloc.allocate_attribute(XMLTags::FMODInitialValue, xmlAlloc.allocate_string(AZStd::to_string(value).c_str()));
+        connNode->append_attribute(initValAttr);
 
         return connNode;
     }
@@ -508,7 +526,7 @@ bool CAudioSystemEditor_FMOD::IsFMODParameterGlobal(const AZStd::string_view par
 {
     for(auto& localParam : m_loader.GetEventParameters())
     {
-        if(localParam == paramPath)
+        if(localParam.first == paramPath)
         {
             return false;
         }

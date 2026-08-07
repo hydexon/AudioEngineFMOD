@@ -67,10 +67,14 @@ function outputAllBanksEvents()
 
     var params = [];
     allParams.forEach(function(ps) {
+        console.log("Minimum: {0}, Maximum: {2}, initialValue: {2}".format(ps.parameter.minimum, ps.parameter.maximum, ps.parameter.initialValue));
         params.push({
             path: ps.getPath(),
             labels: ps.parameter.enumerationLabels,
-            isGlobal: ps.parameter.isGlobal
+            isGlobal: ps.parameter.isGlobal,
+            minimum: ps.parameter.minimum,
+            maximum: ps.parameter.maximum,
+            initialValue: ps.parameter.initialValue
         });
     });
 

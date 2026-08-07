@@ -19,7 +19,7 @@ void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD *audioSystemImpl, AudioC
     LoadControlsForEvents(AZ::IO::FixedMaxPath { RootFMODPath / "FMODProjectInfo.json" }.Native(), parent, locParent);
 }
 
-const AZStd::vector<AZStd::string> &CAudioFMODDataLoader::GetEventParameters()
+const AZStd::unordered_map<AZStd::string, float> &CAudioFMODDataLoader::GetEventParameters() const
 {
     return m_eventParameters;
 }
@@ -96,7 +96,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                         const auto& obj = param.GetObject();
                         if(!obj["isGlobal"].GetBool())
                         {
-                            m_eventParameters.push_back(obj["path"].GetString());
+                            m_eventParameters.emplace(obj["path"].GetString(), obj["initialValue"].GetFloat());
                         }
 
                         m_audioSystemImpl->CreateControl(AudioControls::SControlDef(obj["path"].GetString(),eFMOD_PARAMETER, false, parent, "Parameters"));

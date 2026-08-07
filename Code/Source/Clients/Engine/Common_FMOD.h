@@ -22,6 +22,7 @@ namespace AudioEngineFMOD
         static constexpr const char* FMODEvtAction = "EventAction";
         static constexpr const char* FMODParamAttr = "Parameter";
         static constexpr const char* FMODIsGlobalParam = "Global";
+        static constexpr const char* FMODInitialValue = "InitialValue";
     }
 
     struct FMOD_GUID_CmpEqual {

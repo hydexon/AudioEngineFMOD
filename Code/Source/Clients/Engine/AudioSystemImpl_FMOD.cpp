@@ -443,7 +443,32 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLRtpcImplData *rtpcData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {
+
+    auto fmodObj  = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    auto fmodRtpc = static_cast<const SATLAudioRtpcImplData_FMOD*>(rtpcData);
+
+    if(fmodObj && fmodRtpc)
+    {
+        if(fmodRtpc->m_type == RtpcImpl::Global)
+        {
+            FMOD_RESULT result = m_studioSystem->setParameterByID(fmodRtpc->m_paramID, fmodRtpc->m_initialValue);
+            if(result != FMOD_OK)
+            {
+                AZ_Warning("FMODAudioSystem", false, "Failure resetting global RTPC parameter, %s", FMOD_ErrorString(result));
+                return EAudioRequestStatus::Failure;
+            }
+        }
+        else if(fmodRtpc->m_type == RtpcImpl::PerObject)
+        {
+            //foreach single instance.
+        }
+        else //rtpcimpl::SingleEvent
+        {
+
+        }
+
+    }
 
     return EAudioRequestStatus::Success;
 }
@@ -644,6 +669,15 @@ IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml:
         azdestroy(rtpcData, Audio::AudioImplAllocator, SATLAudioRtpcImplData_FMOD);
         return nullptr;
     }
+
+    //If the RTPC is global try to use the ID to cache it.
+    if(rtpcData->m_type == RtpcImpl::Global)
+    {
+        FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+        m_studioSystem->getParameterDescriptionByName(rtpcData->m_paramPath.c_str(), &paramDesc);
+        rtpcData->m_paramID = paramDesc.id;
+    }
+
     return rtpcData;
 }
 

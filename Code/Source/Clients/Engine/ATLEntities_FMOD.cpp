@@ -43,6 +43,13 @@ bool SATLAudioRtpcImplData_FMOD::ReadFromXml(const AZ::rapidxml::xml_node<char> 
             m_singleEvtPath = pathAttr->value();
         }
 
+        if(auto initVal = node.first_attribute(XMLTags::FMODPathAttribute);
+                initVal != nullptr)
+        {
+            m_initialValue = AZ::StringFunc::ToFloat(initVal->value());
+        }
+
+
         return true;
     }
     else
@@ -51,6 +58,12 @@ bool SATLAudioRtpcImplData_FMOD::ReadFromXml(const AZ::rapidxml::xml_node<char> 
                 pathAttr != nullptr)
         {
             m_paramPath = pathAttr->value();
+        }
+
+        if(auto initVal = node.first_attribute(XMLTags::FMODPathAttribute);
+                initVal != nullptr)
+        {
+            m_initialValue = AZ::StringFunc::ToFloat(initVal->value());
         }
 
         return true;

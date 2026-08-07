@@ -26,7 +26,8 @@ namespace AudioEngineFMOD
     struct SATLAudioRtpcImplData_FMOD : public Audio::IATLRtpcImplData
     {
         RtpcImpl m_type;
-        FMOD_GUID m_paramGUID;
+        float m_initialValue;
+        FMOD_STUDIO_PARAMETER_ID m_paramID;
         AZStd::string m_paramPath;
         FixedEventPath m_singleEvtPath;
 
