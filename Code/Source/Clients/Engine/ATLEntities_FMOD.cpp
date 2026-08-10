@@ -9,16 +9,18 @@ namespace AudioEngineFMOD
 
 bool SATLAudioRtpcImplData_FMOD::ReadFromXml(const AZ::rapidxml::xml_node<char> &node)
 {
-    m_isGlobal = false;
-
     if(AZ::StringFunc::Equal(node.name(), XMLTags::FMODParameterTag))
     {
         auto isGlobalAttr = node.first_attribute(XMLTags::FMODIsGlobalParam);
 
         m_isGlobal = AZ::StringFunc::Equal(isGlobalAttr->value(), "true");
     }
+    else
+    {
+        return false;
+    }
 
-    if(auto paramAttr = node.first_attribute(XMLTags::FMODParamAttr);
+    if(auto paramAttr = node.first_attribute(XMLTags::FMODPathAttribute);
             paramAttr != nullptr)
     {
         m_paramPath = paramAttr->value();

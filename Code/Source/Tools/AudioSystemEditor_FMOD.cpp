@@ -189,10 +189,12 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     {
     case AudioControls::eACET_TRIGGER:
         return eFMOD_EVENT | eFMOD_SNAPSHOT;
+    case AudioControls::eACET_ENVIRONMENT:
     case AudioControls::eACET_RTPC:
         return eFMOD_PARAMETER;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
+
     default:
         break;
     }

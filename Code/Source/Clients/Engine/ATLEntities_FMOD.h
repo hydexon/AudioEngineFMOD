@@ -40,7 +40,6 @@ namespace AudioEngineFMOD
         FMODEventAction m_actionMode = FMODEventAction::Play;
     };
 
-
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
         AZStd::string atlName;
@@ -49,6 +48,17 @@ namespace AudioEngineFMOD
         bool m_preloadSampleData = false;
         FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
         FMODEventAction m_action = FMODEventAction::Unknown;
+    };
+
+    struct SATLEnvironmentImplData_FMOD : public Audio::IATLEnvironmentImplData
+    {
+        SATLEnvironmentImplData_FMOD(FMOD_STUDIO_PARAMETER_ID id, bool isGlobal)
+            : m_parameterId(id)
+            , m_isGlobalParam(isGlobal)
+        {}
+
+        FMOD_STUDIO_PARAMETER_ID m_parameterId;
+        bool m_isGlobalParam;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData

@@ -443,8 +443,28 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjec
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLEnvironmentImplData *environmentData, [[maybe_unused]] float amount) {
-    return EAudioRequestStatus::None;
+EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount) {
+
+    auto fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    const auto fmodEnv = static_cast<const SATLEnvironmentImplData_FMOD*>(environmentData);
+
+    if(fmodObj && fmodEnv)
+    {
+        if(fmodEnv->m_isGlobalParam)
+        {
+            m_studioSystem->setParameterByID(fmodEnv->m_parameterId, amount);
+            return EAudioRequestStatus::Success;
+        }
+        else
+        {
+            for(auto instance : fmodObj->m_activeInstances)
+            {
+                instance->setParameterByID(fmodEnv->m_parameterId, amount);
+                return EAudioRequestStatus::Success;
+            }
+        }
+    }
+    return EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *listenerData, const SATLWorldPosition &newPosition) {
@@ -779,14 +799,34 @@ void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData([[maybe_unused]] IATLS
     // TODO: Implement this pure virtual method.
 }
 
-IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
-    // TODO: Implement this pure virtual method.
-    return nullptr;
+IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
 
+    if(audioEnvironmentNode && azstricmp(audioEnvironmentNode->name(), XMLTags::FMODParameterTag) == 0)
+    {
+        if(auto pathAttr = audioEnvironmentNode->first_attribute(XMLTags::FMODPathAttribute);
+                pathAttr != nullptr)
+        {
+            FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+            if(m_studioSystem->getParameterDescriptionByName(pathAttr->value(), &paramDesc) == FMOD_OK)
+            {
+                return azcreate(SATLEnvironmentImplData_FMOD, (paramDesc.id, true), Audio::AudioImplAllocator);
+            }
+            else
+            {
+                const auto entry = m_evtParametersCache.find(pathAttr->value());
+                if(entry != m_evtParametersCache.end())
+                {
+                    return azcreate(SATLEnvironmentImplData_FMOD, (entry->second.id, false), Audio::AudioImplAllocator);
+                }
+            }
+        }
+    }
+
+    return nullptr;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData([[maybe_unused]] IATLEnvironmentImplData *oldEnvironmentData) {
-    // TODO: Implement this pure virtual method.
+void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData *oldEnvironmentData) {
+    azdestroy(oldEnvironmentData, Audio::AudioImplAllocator, SATLEnvironmentImplData_FMOD);
 }
 
 IATLAudioObjectData *AudioSystemImpl_FMOD::NewGlobalAudioObjectData(TAudioObjectID objectId) {
