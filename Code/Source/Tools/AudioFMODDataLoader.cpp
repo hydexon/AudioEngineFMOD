@@ -66,7 +66,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     {
                         auto evtObj = event.GetObject();
                         auto path = evtObj["path"].GetString();
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(path, eFMOD_EVENT, false, nullptr, "Events"));
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(path, eFMOD_EVENT, false, &m_audioSystemImpl->m_eventsCtrl, "Events"));
                         m_eventGUIDs[path] = evtObj["id"].GetString();
                     }
 
@@ -82,7 +82,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     {
                         auto snapObj = snapshot.GetObject();
                         auto path = snapObj["path"].GetString();
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapObj["path"].GetString(), eFMOD_SNAPSHOT, false, parent, "Snapshots"));
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapObj["path"].GetString(), eFMOD_SNAPSHOT, false, &m_audioSystemImpl->m_eventsCtrl, "Snapshots"));
                         m_eventGUIDs[path] = snapObj["id"].GetString();
                     }
                     //TODO: VCAs
@@ -103,7 +103,7 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                                         bankNameWithExt.c_str(),
                                         eFMOD_SOUNDBANK,
                                         isLocalized,
-                                        isLocalized ? locParent : parent,
+                                        isLocalized ? locParent : &m_audioSystemImpl->m_banksCtrl,
                                         "Banks")
                                     );
                     }
@@ -119,16 +119,19 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                             m_eventParameters.emplace(paramName, obj["initialValue"].GetFloat());
                         }
 
+                        AudioControls::IAudioSystemControl* group = m_audioSystemImpl->CreateControl(AudioControls::SControlDef(paramName,eFMOD_PARAMETER, false, &m_audioSystemImpl->m_paramsCtrl, "Parameters"));
                         if(obj["labels"].IsArray())
                         {
                             auto labelArray = obj["labels"].GetArray();
                             for(const auto& label : labelArray)
                             {
+                                m_audioSystemImpl->CreateControl(AudioControls::SControlDef(label.GetString(), eFMOD_LABELVALUE, false, group));
                                 m_parameterLabels[paramName].push_back(label.GetString());
                             }
                         }
 
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(paramName,eFMOD_PARAMETER, false, parent, "Parameters"));
+
+
                     }
 
 

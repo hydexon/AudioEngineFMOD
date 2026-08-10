@@ -38,6 +38,8 @@ namespace AudioEngineFMOD
         void DataSaved() override;
         QWidget* CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, AudioControls::EACEControlType atlControlType) override;
 
+        AudioControls::IAudioSystemControl m_banksCtrl, m_eventsCtrl, m_paramsCtrl;
+
     private:
         bool IsFMODParameterGlobal(const AZStd::string_view paramPath);
         AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;

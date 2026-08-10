@@ -87,7 +87,10 @@ function outputAllBanksEvents()
     var allSnapshots = studio.project.model.Snapshot.findInstances();
     var snapshts = [];
     allSnapshots.forEach(function(ss){
-        snapshts.push(ss.getPath());
+        snapshts.push({
+            id: ss.id,
+            path:ss.getPath()
+        });
     });
 
     var FMODExportData = {

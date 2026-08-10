@@ -11,7 +11,7 @@ namespace AudioEngineFMOD
         eFMOD_EVENT = AUDIO_BIT(0),
         eFMOD_PARAMETER = AUDIO_BIT(1),
         eFMOD_SOUNDBANK = AUDIO_BIT(2),
-        eFMOD_AUXBUS    = AUDIO_BIT(3),
+        eFMOD_LABELVALUE   = AUDIO_BIT(3),
         eFMOD_SNAPSHOT     = AUDIO_BIT(4)
     };
 

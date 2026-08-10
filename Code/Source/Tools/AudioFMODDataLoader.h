@@ -21,6 +21,8 @@ namespace AudioEngineFMOD
         const AZStd::unordered_map<AZStd::string, float>& GetEventParameters() const;
 
     private:
+        friend class CAudioSystemEditor_FMOD;
+
         void LoadControlsForEvents(const AZStd::string_view infoPath, AudioControls::IAudioSystemControl* parent, AudioControls::IAudioSystemControl* locParent); //TODO: This might be temporal.
         CAudioSystemEditor_FMOD* m_audioSystemImpl = nullptr;
 

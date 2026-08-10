@@ -66,6 +66,18 @@ CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
     m_localizedParentControl.SetParent(&m_rootControl);
     m_rootControl.AddChild(&m_localizedParentControl);
 
+    m_banksCtrl.SetName("Banks");
+    m_banksCtrl.SetParent(&m_rootControl);
+    m_rootControl.AddChild(&m_banksCtrl);
+
+    m_eventsCtrl.SetName("Events");
+    m_eventsCtrl.SetParent(&m_rootControl);
+    m_rootControl.AddChild(&m_eventsCtrl);
+
+    m_paramsCtrl.SetName("Parameters");
+    m_paramsCtrl.SetParent(&m_rootControl);
+    m_rootControl.AddChild(&m_paramsCtrl);
+
     m_loader.Load(this, &m_rootControl, &m_localizedParentControl);
 }
 
@@ -176,6 +188,8 @@ AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioC
         return AudioControls::eACET_RTPC;
     case eFMOD_SOUNDBANK:
         return AudioControls::eACET_PRELOAD;
+    case eFMOD_LABELVALUE:
+        return AudioControls::eACET_SWITCH_STATE;
     default:
         break;
     }
@@ -194,7 +208,10 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
         return eFMOD_PARAMETER;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
-
+    case AudioControls::eACET_SWITCH:
+        return eFMOD_PARAMETER;
+    case AudioControls::eACET_SWITCH_STATE:
+        return eFMOD_LABELVALUE;
     default:
         break;
     }
@@ -430,7 +447,7 @@ const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIcon(AudioControls::TIm
         return ":/Editor/EditorFMODIcons/events.png";
     case eFMOD_PARAMETER:
         return ":/Editor/EditorFMODIcons/switch.png";
-    case eFMOD_AUXBUS:
+    case eFMOD_LABELVALUE:
         return ":/Editor/EditorFMODIcons/bus.png";
     case eFMOD_SOUNDBANK:
         return ":/Editor/EditorFMODIcons/soundbank.png";
