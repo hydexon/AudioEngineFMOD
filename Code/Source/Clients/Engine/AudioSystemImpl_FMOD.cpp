@@ -484,7 +484,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectD
         else
         {
             //foreach single instance.
-            for(auto* instance :fmodObj->m_activeInstances)
+            for(auto* instance : fmodObj->m_activeInstances)
             {
                 instance->setParameterByID(fmodRtpc->m_paramID, fmodRtpc->m_initialValue);
             }
@@ -520,6 +520,30 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
             }
             else
             {
+                //Cache event parameters:
+                int evtCount = 0;
+                implFileEntryData->m_FMODBank->getEventCount(&evtCount);
+                if(evtCount > 0)
+                {
+                    std::vector<FMOD::Studio::EventDescription*> events(evtCount);
+                    implFileEntryData->m_FMODBank->getEventList(events.data(), evtCount, &evtCount);
+
+                    for(auto evtDesc : events)
+                    {
+                        int paramCount = 0;
+                        evtDesc->getParameterDescriptionCount(&paramCount);
+
+                        for(int i = 0; i < paramCount; i++)
+                        {
+                            FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                            if(evtDesc->getParameterDescriptionByIndex(i, &paramDesc) == FMOD_OK)
+                            {
+                                m_evtParametersCache.emplace(paramDesc.name, ParameterInfo{ paramDesc.id, paramDesc.defaultvalue });
+                            }
+                        }
+                    }
+                }
+
                 if(implFileEntryData->m_loadSampleData)
                 {
                     if(FMOD_RESULT loadResult = implFileEntryData->m_FMODBank->loadSampleData(); loadResult != FMOD_OK)
@@ -529,6 +553,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
                         result = EAudioRequestStatus::PartialSuccess;
                     }
                 }
+
             }
         }
     }
@@ -544,12 +569,40 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
         auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
         if(implFileEntryData)
         {
+            //Remove the cache entries from the parameters cache before unloading the bank.
+            int evtCount = 0;
+            implFileEntryData->m_FMODBank->getEventCount(&evtCount);
+            if(evtCount > 0)
+            {
+                std::vector<FMOD::Studio::EventDescription*> events(evtCount);
+                implFileEntryData->m_FMODBank->getEventList(events.data(), evtCount, &evtCount);
+                for(auto evtDesc : events)
+                {
+                    int paramCount = 0;
+                    evtDesc->getParameterDescriptionCount(&paramCount);
+
+                    FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                    for(int i = 0; i < paramCount; i++)
+                    {
+                        if(evtDesc->getParameterDescriptionByIndex(i, &paramDesc) == FMOD_OK)
+                        {
+                            auto entry = m_evtParametersCache.find(paramDesc.name);
+                            if(entry != m_evtParametersCache.end())
+                            {
+                                m_evtParametersCache.erase(entry);
+                            }
+                        }
+                    }
+                }
+            }
             FMOD_RESULT bankResult = implFileEntryData->m_FMODBank->unload();
             if(bankResult != FMOD_OK)
             {
                 AZ_Warning("FMODAudioSystem", false, "FMOD::Studio::Bank::Unload returned %s", FMOD_ErrorString(bankResult));
                 result = EAudioRequestStatus::Failure;
             }
+
+
         }
     }
 
@@ -692,11 +745,21 @@ IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml:
     }
 
     //If the RTPC is global try to use the ID to cache it.
-    if(rtpcData->m_type == RtpcImpl::Global)
+    if(rtpcData->m_isGlobal)
     {
         FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
         m_studioSystem->getParameterDescriptionByName(rtpcData->m_paramPath.c_str(), &paramDesc);
         rtpcData->m_paramID = paramDesc.id;
+        rtpcData->m_initialValue = paramDesc.defaultvalue;
+    }
+    else //if not, probably look up in our parameters cache.
+    {
+        auto entry = m_evtParametersCache.find(rtpcData->m_paramPath.c_str());
+        if(entry != m_evtParametersCache.end())
+        {
+            rtpcData->m_paramID = entry->second.id;
+            rtpcData->m_initialValue = entry->second.defaultValue;
+        }
     }
 
     return rtpcData;

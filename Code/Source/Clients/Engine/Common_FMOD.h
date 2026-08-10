@@ -16,6 +16,7 @@ namespace AudioEngineFMOD
 
         static constexpr const char* FMODSnapshotAttr = "IsSnapshot";
         static constexpr const char* FMODPathAttribute = "Path";
+        static constexpr const char* FMODGUIDAttr = "GUID";
         static constexpr const char* FMODLocalizedAttribute = "Localized";
         static constexpr const char* FMODSamplePreloadAttr = "loadSampleData";
         static constexpr const char* FMODStopMode = "StopMode";

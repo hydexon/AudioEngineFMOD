@@ -49,7 +49,10 @@ function outputAllBanksEvents()
 
     var evts = [];
     allEvents.forEach(function(evt){
-        evts.push(evt.getPath());
+        evts.push({
+            path: evt.getPath(),
+            id: evt.id
+        });
     });
 
     var banks = [];
@@ -67,7 +70,6 @@ function outputAllBanksEvents()
 
     var params = [];
     allParams.forEach(function(ps) {
-        console.log("Minimum: {0}, Maximum: {2}, initialValue: {2}".format(ps.parameter.minimum, ps.parameter.maximum, ps.parameter.initialValue));
         params.push({
             path: ps.getPath(),
             labels: ps.parameter.enumerationLabels,

@@ -24,11 +24,12 @@ bool SATLAudioRtpcImplData_FMOD::ReadFromXml(const AZ::rapidxml::xml_node<char> 
         m_paramPath = paramAttr->value();
     }
 
+    /*
     if(auto initVal = node.first_attribute(XMLTags::FMODInitialValue);
             initVal != nullptr)
     {
         m_initialValue = AZ::StringFunc::ToFloat(initVal->value());
-    }
+    }*/
 
     return true;
 }

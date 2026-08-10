@@ -17,12 +17,15 @@ namespace AudioEngineFMOD
     {
     public:
         void Load(CAudioSystemEditor_FMOD* audioSystemImpl, AudioControls::IAudioSystemControl* parent, AudioControls::IAudioSystemControl* locParent);
+        AZStd::string_view GetEventGUID(AZStd::string_view eventPath);
         const AZStd::unordered_map<AZStd::string, float>& GetEventParameters() const;
+
     private:
         void LoadControlsForEvents(const AZStd::string_view infoPath, AudioControls::IAudioSystemControl* parent, AudioControls::IAudioSystemControl* locParent); //TODO: This might be temporal.
         CAudioSystemEditor_FMOD* m_audioSystemImpl = nullptr;
-        //AZStd::vector<AZStd::string> m_eventParameters;
+
         AZStd::unordered_map<AZStd::string, float> m_eventParameters;
         AZStd::unordered_map<AZStd::string, std::vector<AZStd::string>> m_parameterLabels;
+        AZStd::unordered_map<AZStd::string, AZStd::string> m_eventGUIDs;
     };
 }

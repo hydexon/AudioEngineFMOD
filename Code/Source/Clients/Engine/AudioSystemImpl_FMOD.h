@@ -195,6 +195,12 @@ namespace AudioEngineFMOD
         AZStd::string m_fmodBankPath;
         AZStd::string m_localizedFMODBankPath;
 
+        struct ParameterInfo {
+            FMOD_STUDIO_PARAMETER_ID id;
+            float defaultValue = 0.0f;
+        };
+
+        AZStd::unordered_map<AZStd::fixed_string<256>, ParameterInfo> m_evtParametersCache;
         FMOD::Studio::System* m_studioSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;

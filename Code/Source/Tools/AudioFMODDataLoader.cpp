@@ -19,6 +19,17 @@ void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD *audioSystemImpl, AudioC
     LoadControlsForEvents(AZ::IO::FixedMaxPath { RootFMODPath / "FMODProjectInfo.json" }.Native(), parent, locParent);
 }
 
+AZStd::string_view CAudioFMODDataLoader::GetEventGUID(AZStd::string_view eventPath)
+{
+    auto entry = m_eventGUIDs.find(eventPath);
+    if(entry != m_eventGUIDs.end())
+    {
+        return entry->second;
+    }
+
+    return AZStd::string_view();
+}
+
 const AZStd::unordered_map<AZStd::string, float> &CAudioFMODDataLoader::GetEventParameters() const
 {
     return m_eventParameters;
@@ -27,6 +38,7 @@ const AZStd::unordered_map<AZStd::string, float> &CAudioFMODDataLoader::GetEvent
 void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPath, AudioControls::IAudioSystemControl *parent, AudioControls::IAudioSystemControl *locParent)
 {
     bool failedOpenFile = false;
+    m_eventGUIDs.clear();
 
     AZ_Info("FMODAudioSystem", "Trying to read: %s", infoPath.data());
     if(AZ::IO::FileIOBase::GetInstance()->Exists(infoPath.data()))
@@ -52,7 +64,10 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
 
                     for(const auto& event : eventArr)
                     {
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(event.GetString(), eFMOD_EVENT, false, nullptr, "Events"));
+                        auto evtObj = event.GetObject();
+                        auto path = evtObj["path"].GetString();
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(path, eFMOD_EVENT, false, nullptr, "Events"));
+                        m_eventGUIDs[path] = evtObj["id"].GetString();
                     }
 
                     /*
@@ -65,7 +80,10 @@ void CAudioFMODDataLoader::LoadControlsForEvents(const AZStd::string_view infoPa
                     const auto& snapshotsArr = root["snapshots"].GetArray();
                     for(const auto& snapshot : snapshotsArr)
                     {
-                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapshot.GetString(), eFMOD_SNAPSHOT, false, parent, "Snapshots"));
+                        auto snapObj = snapshot.GetObject();
+                        auto path = snapObj["path"].GetString();
+                        m_audioSystemImpl->CreateControl(AudioControls::SControlDef(snapObj["path"].GetString(), eFMOD_SNAPSHOT, false, parent, "Snapshots"));
+                        m_eventGUIDs[path] = snapObj["id"].GetString();
                     }
                     //TODO: VCAs
 

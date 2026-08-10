@@ -190,7 +190,7 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     case AudioControls::eACET_TRIGGER:
         return eFMOD_EVENT | eFMOD_SNAPSHOT;
     case AudioControls::eACET_RTPC:
-        return eFMOD_PARAMETER | eFMOD_EVENT | eFMOD_SNAPSHOT;
+        return eFMOD_PARAMETER;
     case AudioControls::eACET_PRELOAD:
         return eFMOD_SOUNDBANK;
     default:
@@ -308,6 +308,15 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                 {
                     conn->m_isSnapshot = AZ::StringFunc::Equal(isSnapAttr->value(), "true");
                 }
+
+                //Just check:
+                if(auto guidAttr = node->first_attribute(XMLTags::FMODGUIDAttr);
+                        guidAttr != nullptr)
+                {
+                    auto evtSnapGUID = m_loader.GetEventGUID( controlName );
+                    AZ_Assert( AZ::StringFunc::Equal(guidAttr->value(), evtSnapGUID.data()), "Error the GUID from the XML and FMODProjectInfo.json doesn't not match!");
+                }
+
                 return conn;
             }
             case eFMOD_PARAMETER: {
@@ -348,6 +357,10 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
         auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::FMODPathAttribute, xmlAlloc.allocate_string(control->GetName().c_str()));
         connNode->append_attribute(pathAttr);
+
+        auto guidAttr = xmlAlloc.allocate_attribute(XMLTags::FMODGUIDAttr, xmlAlloc.allocate_string(m_loader.GetEventGUID(control->GetName().c_str()).data()));
+        AZ_Assert(guidAttr->value() != nullptr, "Event/Snapshot GUID is NULL!");
+        connNode->append_attribute(guidAttr);
 
         auto locAttr = xmlAlloc.allocate_attribute(XMLTags::FMODLocalizedAttribute,
                                                    xmlAlloc.allocate_string(
