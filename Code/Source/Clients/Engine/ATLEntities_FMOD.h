@@ -13,23 +13,14 @@ namespace AudioEngineFMOD
     {
         FMOD_3D_ATTRIBUTES m_3dAttributes = {};
         AZStd::vector<FMOD::Studio::EventInstance*> m_activeInstances;
-        //AZStd::unordered_multimap<FMOD_GUID, FMOD::Studio::EventInstance*, FMOD_GUID_CmpEqual, FMOD_GUID_Hashing> m_instances;
-    };
-
-    enum class RtpcImpl {
-        SingleEvent,
-        PerObject,
-        Global,
-        Unknown
     };
 
     struct SATLAudioRtpcImplData_FMOD : public Audio::IATLRtpcImplData
     {
-        RtpcImpl m_type;
+        bool m_isGlobal;
         float m_initialValue;
         FMOD_STUDIO_PARAMETER_ID m_paramID;
         AZStd::string m_paramPath;
-        FixedEventPath m_singleEvtPath;
 
         bool ReadFromXml(const AZ::rapidxml::xml_node<char>& node);
     };

@@ -17,7 +17,4 @@ set(FILES
     Source/Tools/ConnectionWidgets/EventPropertiesForm.cpp
     Source/Tools/ConnectionWidgets/EventPropertiesForm.h
     Source/Tools/ConnectionWidgets/EventPropertiesForm.ui
-    Source/Tools/ConnectionWidgets/EvtToRtpcParamsForm.cpp
-    Source/Tools/ConnectionWidgets/EvtToRtpcParamsForm.h
-    Source/Tools/ConnectionWidgets/EvtToRtpcParamsForm.ui
 )

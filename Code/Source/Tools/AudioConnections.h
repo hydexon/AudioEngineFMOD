@@ -1,7 +1,7 @@
 #pragma once
 
 #include <IAudioConnection.h>
-#include "../../Clients/Engine/Common_FMOD.h"
+#include "Clients/Engine/Common_FMOD.h"
 #include <fmod_studio_common.h>
 
 namespace AudioEngineFMOD
@@ -19,20 +19,6 @@ namespace AudioEngineFMOD
 
         bool HasProperties() override { return true; }
         bool m_loadSampleData;
-    };
-
-    class CFMODEventParamRTPC : public AudioControls::IAudioConnection
-    {
-    public:
-        explicit CFMODEventParamRTPC(AudioControls::CID id)
-            : AudioControls::IAudioConnection(id)
-        {}
-
-        ~CFMODEventParamRTPC() = default;
-        bool HasProperties() override { return true; }
-
-        bool perObject = false;
-        AZStd::string m_paramName = "";
     };
 
     class CFMODParamRTPC : public AudioControls::IAudioConnection

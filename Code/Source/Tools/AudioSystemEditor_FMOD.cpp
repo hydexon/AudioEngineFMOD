@@ -11,7 +11,6 @@
 
 #include "ConnectionWidgets/LoadSampleDataForm.h"
 #include "ConnectionWidgets/EventPropertiesForm.h"
-#include "ConnectionWidgets/EvtToRtpcParamsForm.h"
 
 void InitFMODResources()
 {
@@ -213,15 +212,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
             return AZStd::make_shared<CFMODBankConnection>(middlewareControl->GetId());
         case eFMOD_SNAPSHOT:
         case eFMOD_EVENT: {
-            switch(atlControlType)
-            {
-            case eACET_TRIGGER:
-                return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
-            case eACET_RTPC:
-                return AZStd::make_shared<CFMODEventParamRTPC>(middlewareControl->GetId());
-            default:
-                break;
-            }
+            return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
         }
         default:
             return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
@@ -230,7 +221,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
     return nullptr;
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, [[maybe_unused]]AudioControls::EACEControlType atlControlType)
 {
     using namespace Audio;
     if(!node)
@@ -288,49 +279,36 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
             }
             case eFMOD_SNAPSHOT:
             case eFMOD_EVENT: {
-                if(atlControlType == AudioControls::eACET_TRIGGER)
+                auto conn = AZStd::make_shared<CFMODEventConnection>(control->GetId());
+                if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr);
+                        lsdAttr != nullptr)
                 {
-                    auto conn = AZStd::make_shared<CFMODEventConnection>(control->GetId());
-                    if(auto lsdAttr = node->first_attribute(XMLTags::FMODSamplePreloadAttr);
-                            lsdAttr != nullptr)
-                    {
-                        AZStd::string_view lsdStr = lsdAttr->value();
-                        bool isLsd = AZ::StringFunc::Equal(lsdStr, "true");
-                        conn->m_loadSampleData = isLsd;
-                    }
-
-                    if(auto actionAttr = node->first_attribute(XMLTags::FMODEvtAction);
-                            actionAttr != nullptr)
-                    {
-                        AZStd::string_view actionStr = actionAttr->value();
-                        conn->m_action = Utils::GetActionFromXmlStr(actionStr);
-                    }
-
-                    if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
-                            stopAttr != nullptr)
-                    {
-                        AZStd::string_view stopModeStr = stopAttr->value();
-                        conn->m_stopMode = AZ::StringFunc::Equal(stopModeStr, "AllowFadeout") ?
-                                    FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE;
-                    }
-
-                    if(auto isSnapAttr = node->first_attribute(XMLTags::FMODSnapshotAttr);
-                            isSnapAttr != nullptr)
-                    {
-                        conn->m_isSnapshot = AZ::StringFunc::Equal(isSnapAttr->value(), "true");
-                    }
-                    return conn;
+                    AZStd::string_view lsdStr = lsdAttr->value();
+                    bool isLsd = AZ::StringFunc::Equal(lsdStr, "true");
+                    conn->m_loadSampleData = isLsd;
                 }
-                else //AudioControls::eACET_RTPC
+
+                if(auto actionAttr = node->first_attribute(XMLTags::FMODEvtAction);
+                        actionAttr != nullptr)
                 {
-                    auto conn = AZStd::make_shared<CFMODEventParamRTPC>(control->GetId());
-                    if(auto paramAttr = node->first_attribute(XMLTags::FMODParamAttr);
-                            paramAttr != nullptr)
-                    {
-                        conn->m_paramName = paramAttr->value();
-                    }
-                    return conn;
+                    AZStd::string_view actionStr = actionAttr->value();
+                    conn->m_action = Utils::GetActionFromXmlStr(actionStr);
                 }
+
+                if(auto stopAttr = node->first_attribute(XMLTags::FMODStopMode);
+                        stopAttr != nullptr)
+                {
+                    AZStd::string_view stopModeStr = stopAttr->value();
+                    conn->m_stopMode = AZ::StringFunc::Equal(stopModeStr, "AllowFadeout") ?
+                                FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE;
+                }
+
+                if(auto isSnapAttr = node->first_attribute(XMLTags::FMODSnapshotAttr);
+                        isSnapAttr != nullptr)
+                {
+                    conn->m_isSnapshot = AZ::StringFunc::Equal(isSnapAttr->value(), "true");
+                }
+                return conn;
             }
             case eFMOD_PARAMETER: {
                 auto isGlobalAttr  = node->first_attribute(XMLTags::FMODIsGlobalParam);
@@ -378,51 +356,22 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
         auto isSnapshotAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSnapshotAttr, xmlAlloc.allocate_string(control->GetType() == eFMOD_SNAPSHOT ? "true" : "false"));
         connNode->append_attribute(isSnapshotAttr);
+        auto conn = static_cast<const CFMODEventConnection*>(connection.get());
+        AZ_Assert(conn, "CFMODEventConnection is a invalid cast!");
 
-        switch(atlControlType)
-        {
-        case eACET_TRIGGER: {
-            auto conn = static_cast<const CFMODEventConnection*>(connection.get());
-            AZ_Assert(conn, "CFMODEventConnection is a invalid cast!");
+        auto actionStr  = Utils::GetXmlStrFromAction(conn->m_action);
+        auto actionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction, xmlAlloc.allocate_string(actionStr.c_str()));
+        connNode->append_attribute(actionAttr);
 
-            auto actionStr  = Utils::GetXmlStrFromAction(conn->m_action);
-            auto actionAttr = xmlAlloc.allocate_attribute(XMLTags::FMODEvtAction, xmlAlloc.allocate_string(actionStr.c_str()));
-            connNode->append_attribute(actionAttr);
+        auto stopModeAttr = xmlAlloc.allocate_attribute(XMLTags::FMODStopMode, xmlAlloc.allocate_string(conn->m_stopMode == FMOD_STUDIO_STOP_ALLOWFADEOUT ? "AllowFadeout" : "Immediate"));
+        connNode->append_attribute(stopModeAttr);
 
-            auto stopModeAttr = xmlAlloc.allocate_attribute(XMLTags::FMODStopMode, xmlAlloc.allocate_string(conn->m_stopMode == FMOD_STUDIO_STOP_ALLOWFADEOUT ? "AllowFadeout" : "Immediate"));
-            connNode->append_attribute(stopModeAttr);
+        auto snapAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSnapshotAttr, xmlAlloc.allocate_string(conn->m_isSnapshot ? "true" : "false"));
+        connNode->append_attribute(snapAttr);
+        return connNode;
 
-            auto snapAttr = xmlAlloc.allocate_attribute(XMLTags::FMODSnapshotAttr, xmlAlloc.allocate_string(conn->m_isSnapshot ? "true" : "false"));
-            connNode->append_attribute(snapAttr);
-            return connNode;
-        }
-        case eACET_RTPC: {
-            auto conn = static_cast<const CFMODEventParamRTPC*>(connection.get());
-            AZ_Assert(conn, "CFMODEventParamRTPC is a invalid cast!");
-
-            auto paramNameAttr = xmlAlloc.allocate_attribute(XMLTags::FMODParamAttr, xmlAlloc.allocate_string(conn->m_paramName.c_str()));
-            connNode->append_attribute(paramNameAttr);
-
-            auto defaultValueIt = m_loader.GetEventParameters().find(conn->m_paramName);
-            float value = 0.0f;
-            if(defaultValueIt != m_loader.GetEventParameters().end())
-            {
-                value = defaultValueIt->second;
-            }
-            auto initValAttr  = xmlAlloc.allocate_attribute(XMLTags::FMODInitialValue, xmlAlloc.allocate_string(AZStd::to_string(value).c_str()));
-            connNode->append_attribute(initValAttr);
-
-            return connNode;
-        }
-        case eACET_SWITCH_STATE:
-        case eACET_ENVIRONMENT:
-        case eACET_SWITCH:
-        default:
-            break;
-        }
-        break;
     }
-    case eFMOD_PARAMETER: { //Global and Per-Object FMOD Parameters
+    case eFMOD_PARAMETER: {
         auto connNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element);
         connNode->name(XMLTags::FMODParameterTag);
 
@@ -512,12 +461,8 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
         case eFMOD_SOUNDBANK:
             return new LoadSampleDataForm(connection);
         case eFMOD_EVENT:
-        case eFMOD_SNAPSHOT: {
-            if(atlControlType == AudioControls::eACET_TRIGGER)
-                return new EventPropertiesForm(connection, control->GetType());
-            else //eACET_RTPC.
-                return new EvtToRtpcParamsForm(connection, &m_loader);
-        }
+        case eFMOD_SNAPSHOT:
+            return new EventPropertiesForm(connection, control->GetType());
         default:
             return nullptr;
     }
@@ -542,8 +487,11 @@ IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string nam
     {
         AZ::StringFunc::Path::Join(parent->GetName().c_str(), name.c_str(), name);
     }
-    //TODO: Deal with the localized one.
-    AZ_UNUSED(isLocalized);
+
+    if(isLocalized)
+    {
+        AZ::StringFunc::Path::Join(m_currentLanguageName.c_str(), name.c_str(), name);
+    }
 
     return GetControl(Audio::AudioStringToID<CID>(name.data()));
 }

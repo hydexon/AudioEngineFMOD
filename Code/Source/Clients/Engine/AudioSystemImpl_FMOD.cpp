@@ -385,7 +385,22 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectDat
 
     if(fmodObj && fmodRtpc)
     {
-
+        if(!fmodRtpc->m_isGlobal)
+        {
+            for(auto* instance : fmodObj->m_activeInstances)
+            {
+                instance->setParameterByID(fmodRtpc->m_paramID, value);
+            }
+        }
+        else
+        {
+            FMOD_RESULT globalRtpcResult = m_studioSystem->setParameterByID(fmodRtpc->m_paramID, value);
+            if(globalRtpcResult != FMOD_OK)
+            {
+                AZ_Error("FMODAudioSystem", false, "Error setting Global RTPC (%s):%s", fmodRtpc->m_paramPath.c_str(), FMOD_ErrorString(globalRtpcResult));
+                return EAudioRequestStatus::Failure;
+            }
+        }
         return EAudioRequestStatus::Success;
     }
     return EAudioRequestStatus::Failure;
@@ -457,7 +472,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectD
 
     if(fmodObj && fmodRtpc)
     {
-        if(fmodRtpc->m_type == RtpcImpl::Global)
+        if(fmodRtpc->m_isGlobal)
         {
             FMOD_RESULT result = m_studioSystem->setParameterByID(fmodRtpc->m_paramID, fmodRtpc->m_initialValue);
             if(result != FMOD_OK)
@@ -466,15 +481,14 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectD
                 return EAudioRequestStatus::Failure;
             }
         }
-        else if(fmodRtpc->m_type == RtpcImpl::PerObject)
+        else
         {
             //foreach single instance.
+            for(auto* instance :fmodObj->m_activeInstances)
+            {
+                instance->setParameterByID(fmodRtpc->m_paramID, fmodRtpc->m_initialValue);
+            }
         }
-        else //rtpcimpl::SingleEvent
-        {
-
-        }
-
     }
 
     return EAudioRequestStatus::Success;
