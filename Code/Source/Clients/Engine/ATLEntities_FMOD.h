@@ -61,6 +61,19 @@ namespace AudioEngineFMOD
         bool m_isGlobalParam;
     };
 
+    struct SATLSwitchStateImplData_FMOD : public Audio::IATLSwitchStateImplData
+    {
+        SATLSwitchStateImplData_FMOD(FMOD_STUDIO_PARAMETER_ID id, const char* namedVal, bool isGlobal)
+            : m_parameterId(id)
+            , m_namedValue(namedVal)
+            , m_isGlobalParam(isGlobal)
+        {}
+
+        FMOD_STUDIO_PARAMETER_ID m_parameterId;
+        AZStd::string m_namedValue;
+        bool m_isGlobalParam;
+    };
+
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
     {
         SATLListenerData_FMOD(int lidx = 0)

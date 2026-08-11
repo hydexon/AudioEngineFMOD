@@ -21,20 +21,6 @@ namespace AudioEngineFMOD
         bool m_loadSampleData;
     };
 
-    class CFMODParamRTPC : public AudioControls::IAudioConnection
-    {
-    public:
-        explicit CFMODParamRTPC(AudioControls::CID id)
-            : AudioControls::IAudioConnection(id)
-            , m_isGlobal(false)
-        {}
-
-        ~CFMODParamRTPC() = default;
-        bool HasProperties() override { return true; }
-
-        bool m_isGlobal;
-    };
-
     class CFMODEventConnection : public AudioControls::IAudioConnection
     {
     public:
@@ -56,5 +42,19 @@ namespace AudioEngineFMOD
 
         //TODO: Enum here to Play or Stop Event.
         //      If Stop Event also show how it should stop.
+    };
+
+    class CStateToFMODParam : public AudioControls::IAudioConnection
+    {
+    public:
+        explicit CStateToFMODParam(AudioControls::CID id)
+            : AudioControls::IAudioConnection(id)
+        {}
+
+        ~CStateToFMODParam() override = default;
+
+        bool HasProperties() override { return true; }
+
+        AZStd::string m_namedValue;
     };
 }

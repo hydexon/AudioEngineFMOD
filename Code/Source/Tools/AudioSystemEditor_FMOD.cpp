@@ -233,6 +233,12 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
         case eFMOD_EVENT: {
             return AZStd::make_shared<CFMODEventConnection>(middlewareControl->GetId());
         }
+        case eFMOD_PARAMETER: {
+            if(atlControlType == AudioControls::eACET_SWITCH_STATE)
+            {
+                return AZStd::make_shared<CStateToFMODParam>(middlewareControl->GetId());
+            }
+        }
         default:
             return AZStd::make_shared<IAudioConnection>(middlewareControl->GetId());
         }
@@ -339,12 +345,16 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
                 return conn;
             }
             case eFMOD_PARAMETER: {
-                auto isGlobalAttr  = node->first_attribute(XMLTags::FMODIsGlobalParam);
-                bool isGlobalParam = isGlobalAttr ? AZ::StringFunc::Equal(isGlobalAttr->value(), "true") : false;
-
-                auto conn = AZStd::make_shared<CFMODParamRTPC>(control->GetId());
-                conn->m_isGlobal = isGlobalParam;
-                return conn;
+                if(atlControlType == eACET_SWITCH_STATE)
+                {
+                    auto conn = AZStd::make_shared<CStateToFMODParam>(control->GetId());
+                    if(auto namedValueAttr = node->first_attribute(XMLTags::FMODNamedValue);
+                            namedValueAttr != nullptr)
+                    {
+                        conn->m_namedValue = namedValueAttr->value();
+                    }
+                    return conn;
+                }
             }
             default:
                 break;
@@ -356,7 +366,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     return nullptr;
 }
 
-AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, [[maybe_unused]] const AudioControls::EACEControlType atlControlType)
+AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
 {
     const IAudioSystemControl* control = GetControl(connection->GetID());
     if(!control)
@@ -413,14 +423,12 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
         auto isGlobalAttr = xmlAlloc.allocate_attribute(XMLTags::FMODIsGlobalParam, xmlAlloc.allocate_string(IsFMODParameterGlobal(control->GetName()) ? "true" : "false"));
         connNode->append_attribute(isGlobalAttr);
 
-        auto defaultValueIt = m_loader.GetEventParameters().find(control->GetName());
-        float value = 0.0f;
-        if(defaultValueIt != m_loader.GetEventParameters().end())
+        if(atlControlType == eACET_SWITCH_STATE)
         {
-            value = defaultValueIt->second;
+            const auto stateConnection = AZStd::static_pointer_cast<const CStateToFMODParam>(connection);
+            auto namedValueAttr = xmlAlloc.allocate_attribute(XMLTags::FMODNamedValue, xmlAlloc.allocate_string(stateConnection->m_namedValue.c_str()));
+            connNode->append_attribute(namedValueAttr);
         }
-        auto initValAttr  = xmlAlloc.allocate_attribute(XMLTags::FMODInitialValue, xmlAlloc.allocate_string(AZStd::to_string(value).c_str()));
-        connNode->append_attribute(initValAttr);
 
         return connNode;
     }
@@ -502,15 +510,8 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
 
 bool CAudioSystemEditor_FMOD::IsFMODParameterGlobal(const AZStd::string_view paramPath)
 {
-    for(auto& localParam : m_loader.GetEventParameters())
-    {
-        if(localParam.first == paramPath)
-        {
-            return false;
-        }
-    }
-
-    return true;
+    auto paramIt = m_loader.GetEventParameters().find(paramPath);
+    return paramIt == m_loader.GetEventParameters().end();
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const

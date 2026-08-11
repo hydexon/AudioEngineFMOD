@@ -406,9 +406,40 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectDat
     return EAudioRequestStatus::Failure;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState([[maybe_unused]] IATLAudioObjectData *objectData, [[maybe_unused]] const IATLSwitchStateImplData *switchStateData) {
-    // TODO: Implement this pure virtual method.
-    return EAudioRequestStatus::Success;
+EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData) {
+    EAudioRequestStatus result = EAudioRequestStatus::Failure;
+
+    auto* fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    const auto* fmodSwitchState = static_cast<const SATLSwitchStateImplData_FMOD*>(switchStateData);
+
+    if(fmodObj && fmodSwitchState)
+    {
+        if(fmodSwitchState->m_isGlobalParam)
+        {
+            FMOD_RESULT fmodRes = m_studioSystem->setParameterByIDWithLabel(fmodSwitchState->m_parameterId, fmodSwitchState->m_namedValue.c_str());
+            if(fmodRes != FMOD_OK)
+            {
+                AZ_Warning("FMODAudioSystem",
+                           false,
+                           "A error happened trying to set global parameter in FMOD for Switch State: %s",
+                           FMOD_ErrorString(fmodRes));
+            }
+            else
+            {
+                result = EAudioRequestStatus::Success;
+            }
+        }
+        else
+        {
+            for(auto instance : fmodObj->m_activeInstances)
+            {
+                instance->setParameterByIDWithLabel(fmodSwitchState->m_parameterId, fmodSwitchState->m_namedValue.c_str());
+            }
+            result = EAudioRequestStatus::Success;
+        }
+    }
+
+    return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
@@ -789,14 +820,50 @@ void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData
     azdestroy(oldRtpcData, Audio::AudioImplAllocator, SATLAudioRtpcImplData_FMOD);
 }
 
-IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData([[maybe_unused]] const AZ::rapidxml::xml_node<char> *audioSwitchStateNode) {
-    // TODO: Implement this pure virtual method.
+IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char> *audioSwitchStateNode)
+{
+
+    if(!audioSwitchStateNode)
+    {
+        return nullptr;
+    }
+
+    auto paramNameAttr  = audioSwitchStateNode->first_attribute(XMLTags::FMODParameterTag);
+    auto namedValueAttr = audioSwitchStateNode->first_attribute(XMLTags::FMODNamedValue);
+
+    if(paramNameAttr && namedValueAttr)
+    {
+        auto isGlobalAttr = audioSwitchStateNode->first_attribute(XMLTags::FMODIsGlobalParam);
+        bool isGlobal = isGlobalAttr ? AZ::StringFunc::Equal(isGlobalAttr->value(), "true") : false;
+
+        FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+        if(isGlobal)
+        {
+            if(m_studioSystem->getParameterDescriptionByName(paramNameAttr->value(), &paramDesc) != FMOD_OK)
+            {
+                AZ_Error("FMODAudioSystem", false, "Unable to find global parameter for Switch State: %s", paramNameAttr->value());
+                return nullptr;
+            }
+        }
+        else
+        {
+            const auto entry = m_evtParametersCache.find(paramNameAttr->value());
+            if(entry == m_evtParametersCache.end())
+            {
+                AZ_Error("FMODAudioSystem", false, "Unable to find event parameter in the cache: %s, Did you forget preload a bank?",paramNameAttr->value());
+                return nullptr;
+            }
+        }
+
+        return azcreate(SATLSwitchStateImplData_FMOD, (paramDesc.id, namedValueAttr->value(), isGlobal), Audio::AudioImplAllocator);
+    }
+
     return nullptr;
 
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData([[maybe_unused]] IATLSwitchStateImplData *oldAudioSwitchStateData) {
-    // TODO: Implement this pure virtual method.
+    azdestroy(oldAudioSwitchStateData, Audio::AudioImplAllocator, SATLSwitchStateImplData_FMOD);
 }
 
 IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
