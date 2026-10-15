@@ -1,8 +1,15 @@
 #include "AudioSystemImplCVars.h"
-
+#include <fmod_common.h>
 
 namespace AudioEngineFMOD::CVars
 {
+    AZ_CVAR(int,
+            s_FMOD_MaxListeners,
+            FMOD_MAX_LISTENERS,
+            nullptr,
+            AZ::ConsoleFunctorFlags::Null,
+            "The maximum number of 3D listeners, maximum of 8");
+
     AZ_CVAR(int,
             s_FMODStudio_MaxChannels,
             512,

@@ -80,7 +80,7 @@ namespace AudioEngineFMOD
             : listenerIndex(lidx)
         {}
 
-        int listenerIndex = 0;
+        const int listenerIndex = 0;
         AZ::Vector3 velocity = AZ::Vector3::CreateOne();
         float weight = 1.0f;
     };

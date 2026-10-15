@@ -172,7 +172,11 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    m_studioSystem->setNumListeners(4); //@HACK: No idea why O3DE is trying to set 3 listeners.
+    m_studioSystem->setNumListeners(CVars::s_FMOD_MaxListeners); //@TODO: Should be left as a Cvar?
+    for(int i = CVars::s_FMOD_MaxListeners-1; i >= 1; --i) //We leave index 0 as the default listener.
+    {
+        m_availableListeners.push_back(false);
+    }
 
     return EAudioRequestStatus::Success;
 }
@@ -511,8 +515,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
                                                                           ldata->velocity);
 
     m_studioSystem->setListenerAttributes(ldata->listenerIndex, &listenerAttributes);
-    m_studioSystem->setListenerWeight(ldata->listenerIndex, ldata->weight);
-
     return EAudioRequestStatus::Success;
 }
 
@@ -913,20 +915,39 @@ void AudioSystemImpl_FMOD::DeleteAudioObjectData(IATLAudioObjectData *oldObjectD
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewDefaultAudioListenerObjectData(TATLIDType objectId) {
-    return NewAudioListenerObjectData(objectId);
+    auto newListener = azcreate(SATLListenerData_FMOD, (0), Audio::AudioImplAllocator);
+    return newListener;
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewAudioListenerObjectData(TATLIDType objectId) {
-    auto newListenerData = azcreate(SATLListenerData_FMOD, (aznumeric_cast<int>(objectId)), Audio::AudioImplAllocator);
+    if(m_availableListeners.empty())
+    {
+        AZ_Error("FMODAudioSystem", false, "There's no more available listeners to create!");
+        return nullptr;
+    }
+
+    int newListenerIdx = m_availableListeners.back();
+    m_availableListeners.pop_back();
+
+    auto newListenerData = azcreate(SATLListenerData_FMOD, (newListenerIdx), Audio::AudioImplAllocator);
     if(newListenerData)
     {
-        m_studioSystem->getListenerWeight(newListenerData->listenerIndex, &newListenerData->weight);
+        m_studioSystem->setListenerWeight(newListenerData->listenerIndex, 1.0f);
     }
     return newListenerData;
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldListenerData) {
-    azdestroy(oldListenerData, Audio::AudioImplAllocator, SATLListenerData_FMOD);
+    auto listener = static_cast<SATLListenerData_FMOD*>(oldListenerData);
+    if(listener->listenerIndex > 0)
+    {
+        FMOD_3D_ATTRIBUTES zeroAttr = {};
+        m_studioSystem->setListenerAttributes(listener->listenerIndex, &zeroAttr);
+        m_studioSystem->setListenerWeight(listener->listenerIndex, 0.0f);
+
+        m_availableListeners.push_back(listener->listenerIndex);
+    }
+    azdestroy(listener, Audio::AudioImplAllocator, SATLListenerData_FMOD);
 }
 
 IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData(TAudioEventID eventID) {
@@ -987,12 +1008,13 @@ AZStd::vector<AudioImplMemoryPoolInfo> AudioSystemImpl_FMOD::GetMemoryPoolInfo()
     return AZStd::vector<AudioImplMemoryPoolInfo>();
 }
 
-bool AudioSystemImpl_FMOD::CreateAudioSource([[maybe_unused]] const SAudioInputConfig &sourceConfig) {
+bool AudioSystemImpl_FMOD::CreateAudioSource(const SAudioInputConfig &sourceConfig) {
+    AZ_UNUSED(sourceConfig);
     return false;
 }
 
-void AudioSystemImpl_FMOD::DestroyAudioSource([[maybe_unused]] TAudioSourceId sourceId) {
-    // TODO: Implement this pure virtual method.
+void AudioSystemImpl_FMOD::DestroyAudioSource(TAudioSourceId sourceId) {
+    AZ_UNUSED(sourceId);
 }
 
 void AudioSystemImpl_FMOD::SetPanningMode(PanningMode) {

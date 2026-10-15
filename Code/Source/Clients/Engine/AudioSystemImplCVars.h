@@ -4,6 +4,7 @@
 
 namespace AudioEngineFMOD::CVars
 {
+    AZ_CVAR_EXTERNED(int, s_FMOD_MaxListeners);
     AZ_CVAR_EXTERNED(int, s_FMODStudio_MaxChannels);
     AZ_CVAR_EXTERNED(bool,s_FMODStudio_EnableProfiling);
 

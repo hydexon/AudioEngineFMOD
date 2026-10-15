@@ -194,6 +194,7 @@ namespace AudioEngineFMOD
         AZStd::string m_assetPlatform;
         AZStd::string m_fmodBankPath;
         AZStd::string m_localizedFMODBankPath;
+        AZStd::vector<int> m_availableListeners;
 
         struct ParameterInfo {
             FMOD_STUDIO_PARAMETER_ID id;
