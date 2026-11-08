@@ -8,21 +8,30 @@
 
 namespace AudioEngineFMOD
 {
-    typedef AZStd::fixed_string<256> FixedEventPath;
+
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
-        FMOD_3D_ATTRIBUTES m_3dAttributes = {};
-        AZStd::vector<FMOD::Studio::EventInstance*> m_activeInstances;
+        explicit SATLAudioObjectData_FMOD(Audio::TAudioControlID id);
+
+        Audio::TAudioControlID m_id;
+        FMOD_3D_ATTRIBUTES m_attributes;
+
     };
 
-    struct SATLAudioRtpcImplData_FMOD : public Audio::IATLRtpcImplData
+    struct SATLParameterRtpc_FMOD : public Audio::IATLRtpcImplData
     {
-        bool m_isGlobal;
-        float m_initialValue;
-        FMOD_STUDIO_PARAMETER_ID m_paramID;
-        AZStd::string m_paramPath;
+        explicit SATLParameterRtpc_FMOD(
+                uint32_t eventPathId,
+                float const mult,
+                float const shift)
+            : m_eventPathId(eventPathId)
+            , m_mult(mult)
+            , m_shift(shift)
+        {};
 
-        bool ReadFromXml(const AZ::rapidxml::xml_node<char>& node);
+        uint32_t m_eventPathId;
+        float const m_mult;
+        float const m_shift;
     };
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
@@ -32,70 +41,40 @@ namespace AudioEngineFMOD
         {};
 
         Audio::TAudioEventID m_eventId;
-        AZStd::string atlName;
-        FixedEventPath m_eventPath;
-        FMOD::Studio::EventDescription* m_eventDescription = nullptr;
-        FMOD::Studio::EventInstance* m_currentInstance = nullptr;
-        FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
-        FMODEventAction m_actionMode = FMODEventAction::Play;
     };
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
-        AZStd::string atlName;
-        FixedEventPath m_eventPath;
-        FMOD_GUID m_eventGUID;
-        bool m_preloadSampleData = false;
-        FMOD_STUDIO_STOP_MODE m_stopMode = FMOD_STUDIO_STOP_ALLOWFADEOUT;
-        FMODEventAction m_action = FMODEventAction::Unknown;
     };
 
     struct SATLEnvironmentImplData_FMOD : public Audio::IATLEnvironmentImplData
     {
-        SATLEnvironmentImplData_FMOD(FMOD_STUDIO_PARAMETER_ID id, bool isGlobal)
-            : m_parameterId(id)
-            , m_isGlobalParam(isGlobal)
-        {}
-
-        FMOD_STUDIO_PARAMETER_ID m_parameterId;
-        bool m_isGlobalParam;
     };
 
     struct SATLSwitchStateImplData_FMOD : public Audio::IATLSwitchStateImplData
     {
-        SATLSwitchStateImplData_FMOD(FMOD_STUDIO_PARAMETER_ID id, const char* namedVal, bool isGlobal)
-            : m_parameterId(id)
-            , m_namedValue(namedVal)
-            , m_isGlobalParam(isGlobal)
-        {}
-
-        FMOD_STUDIO_PARAMETER_ID m_parameterId;
-        AZStd::string m_namedValue;
-        bool m_isGlobalParam;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
     {
-        SATLListenerData_FMOD(int lidx = 0)
-            : listenerIndex(lidx)
-        {}
+        explicit SATLListenerData_FMOD(const Audio::TAudioControlID id)
+            : m_id(id)
+        {
+        }
 
-        const int listenerIndex = 0;
-        AZ::Vector3 velocity = AZ::Vector3::CreateOne();
-        float weight = 1.0f;
+        Audio::TAudioControlID m_id;
+        FMOD_3D_ATTRIBUTES m_attributes;
     };
 
     struct SATLAudioFileEntryData_FMOD : public Audio::IATLAudioFileEntryData
     {
-        SATLAudioFileEntryData_FMOD(const char* bankBaseName, bool loadSampleData)
+        SATLAudioFileEntryData_FMOD(const char* bankBaseName)
             : m_FMODBank(nullptr)
             , m_baseBankName(bankBaseName)
-            , m_loadSampleData(loadSampleData)
         {}
 
         ~SATLAudioFileEntryData_FMOD() override {}
 
-        bool m_loadSampleData;
         AZStd::string m_baseBankName;
         FMOD::Studio::Bank* m_FMODBank;
     };
