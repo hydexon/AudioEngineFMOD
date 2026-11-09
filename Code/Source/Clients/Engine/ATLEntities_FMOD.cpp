@@ -12,6 +12,11 @@ SATLAudioObjectData_FMOD::SATLAudioObjectData_FMOD(Audio::TAudioControlID id)
 
 }
 
+void SATLAudioObjectData_FMOD::Reset()
+{
+
+}
+
 
 bool SATLAudioObjectData_FMOD::ApplyEvent(SATLEventData_FMOD *event)
 {

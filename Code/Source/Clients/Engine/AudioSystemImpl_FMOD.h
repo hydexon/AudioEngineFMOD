@@ -9,6 +9,7 @@
 
 namespace AudioEngineFMOD
 {
+    struct SATLAudioObjectData_FMOD;
     class AudioSystemImpl_FMOD : public Audio::AudioSystemImplementation
     {
     public:
@@ -194,7 +195,9 @@ namespace AudioEngineFMOD
         AZStd::string m_assetPlatform;
         AZStd::string m_fmodBankPath;
         AZStd::string m_localizedFMODBankPath;
-        AZStd::vector<int> m_availableListeners;
+
+        Audio::TAudioObjectID m_globalAudioObjectId;
+        AZStd::vector<SATLAudioObjectData_FMOD*> m_registeredAudioObjects;
 
         struct ParameterInfo {
             FMOD_STUDIO_PARAMETER_ID id;
@@ -203,10 +206,12 @@ namespace AudioEngineFMOD
 
         AZStd::unordered_map<AZStd::fixed_string<256>, ParameterInfo> m_evtParametersCache;
         FMOD::Studio::System* m_studioSystem;
+        FMOD::System* m_lowlvlSystem;
         FMOD::Studio::Bank* m_masterBank;
         FMOD::Studio::Bank* m_masterStringsBank;
 
         void SetBankPaths();
+        Audio::EAudioRequestStatus MuteFMODMasterBus(bool mute);
         void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
         void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
     };

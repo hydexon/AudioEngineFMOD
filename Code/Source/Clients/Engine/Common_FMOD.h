@@ -10,11 +10,12 @@ namespace AudioEngineFMOD
     namespace XMLTags
     {
         static constexpr const char* FMODEventTag = "FMODEvent";
-        static constexpr const char* FMODParameterTag = "FMODParameter";
+        static constexpr const char* FMODSnapshot = "FMODSnapshot";
+        static constexpr const char* FMODEventParameterTag = "FMODEventParameter";
+        static constexpr const char* FMODSnapshotParameterTag = "FMODSnapshotParameter";
         static constexpr const char* FMODStudioBankTag = "FMODBankFile";
         static constexpr const char* FMODFileTag = "FMODAudioFile";
 
-        static constexpr const char* FMODSnapshotAttr = "IsSnapshot";
         static constexpr const char* FMODPathAttribute = "Path";
         static constexpr const char* FMODGUIDAttr = "GUID";
         static constexpr const char* FMODLocalizedAttribute = "Localized";
@@ -55,18 +56,16 @@ namespace AudioEngineFMOD
     };
 
 
-    enum class FMODEventAction {
-        Play = 0,
-        Pause,
-        Stop,
-        Resume,
-        Unknown
+    enum class FMODEventType {
+        None,
+        Play,
+        Stop
     };
 
     namespace Utils
     {
-        FMODEventAction GetActionFromXmlStr(const AZStd::string_view source);
-        AZStd::string GetXmlStrFromAction(const FMODEventAction action);
+        FMODEventType GetActionFromXmlStr(const AZStd::string_view source);
+        AZStd::string GetXmlStrFromAction(const FMODEventType action);
 
         FMOD_VECTOR AzToFMODVector(const AZ::Vector3& vector);
         AZ::Vector3 FMODToAzVector(const FMOD_VECTOR& vector);

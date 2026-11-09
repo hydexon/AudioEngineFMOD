@@ -28,27 +28,24 @@ namespace AudioEngineFMOD
         };
     }
 
-    FMODEventAction GetActionFromXmlStr(const AZStd::string_view source)
+    FMODEventType GetActionFromXmlStr(const AZStd::string_view source)
     {
-        FMODEventAction result = FMODEventAction::Unknown;
+        FMODEventType result = FMODEventType::None;
 
-        if(AZ::StringFunc::Equal(source, "play"))        result = FMODEventAction::Play;
-        else if(AZ::StringFunc::Equal(source, "pause"))  result = FMODEventAction::Pause;
-        else if(AZ::StringFunc::Equal(source, "stop"))   result = FMODEventAction::Stop;
-        else if(AZ::StringFunc::Equal(source, "resume")) result = FMODEventAction::Resume;
+        if(AZ::StringFunc::Equal(source, "play"))        result = FMODEventType::Play;
+        else if(AZ::StringFunc::Equal(source, "stop"))   result = FMODEventType::Stop;
 
         return result;
     }
 
-    AZStd::string GetXmlStrFromAction(const FMODEventAction action)
+    AZStd::string GetXmlStrFromAction(const FMODEventType action)
     {
         switch(action)
         {
-        case FMODEventAction::Play:     return "play";
-        case FMODEventAction::Pause:    return "pause";
-        case FMODEventAction::Resume:   return "resume";
-        case FMODEventAction::Stop:     return "stop";
-        default:                        return "unknown";
+
+        case FMODEventType::Play:     return "play";
+        case FMODEventType::Stop:     return "stop";
+        default:                        return "none";
         }
     }
 

@@ -18,6 +18,7 @@ namespace AudioEngineFMOD
         explicit SATLAudioObjectData_FMOD(Audio::TAudioControlID id);
         virtual ~SATLAudioObjectData_FMOD() {}
 
+        void Reset();
         bool ApplyEvent(SATLEventData_FMOD* event);
         void RemoveEvent(SATLEventData_FMOD* event);
         void StopEvent(uint32_t eventId);
@@ -34,6 +35,7 @@ namespace AudioEngineFMOD
 
         Audio::TAudioControlID m_id;
         FMOD_3D_ATTRIBUTES m_attributes;
+        AZStd::fixed_string<512> m_name;
 
         AZStd::vector<SATLEventData_FMOD*> m_events;
         AZStd::unordered_map<SATLParameterRtpc_FMOD*, float> m_params;
@@ -81,17 +83,10 @@ namespace AudioEngineFMOD
         float const m_shift;
     };
 
-    enum class EFMODEventType
-    {
-        EFMODEventType_None,
-        EFMODEventType_Play,
-        EFMODEventType_Stop
-    };
-
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
         uint32_t m_eventPathId;
-        EFMODEventType m_eventType;
+        FMODEventType m_eventAction;
         FMOD::Studio::EventDescription* m_eventDescription;
         FMOD_GUID m_guid;
     };
@@ -111,12 +106,12 @@ namespace AudioEngineFMOD
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
     {
-        explicit SATLListenerData_FMOD(const Audio::TAudioControlID id)
+        explicit SATLListenerData_FMOD(const int id)
             : m_id(id)
         {
         }
 
-        Audio::TAudioControlID m_id;
+        int m_id;
         FMOD_3D_ATTRIBUTES m_attributes;
     };
 

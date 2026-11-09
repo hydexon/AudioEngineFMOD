@@ -28,7 +28,7 @@ namespace AudioEngineFMOD
             : AudioControls::IAudioConnection(id)
             , m_loadSampleData(false)
             , m_stopMode(FMOD_STUDIO_STOP_ALLOWFADEOUT)
-            , m_action(FMODEventAction::Play)
+            , m_action(FMODEventType::Play)
         {
         }
 
@@ -36,7 +36,7 @@ namespace AudioEngineFMOD
         bool HasProperties() override { return true; }
 
         bool m_isSnapshot;
-        FMODEventAction m_action;
+        FMODEventType m_action;
         bool m_loadSampleData;
         FMOD_STUDIO_STOP_MODE m_stopMode;
 

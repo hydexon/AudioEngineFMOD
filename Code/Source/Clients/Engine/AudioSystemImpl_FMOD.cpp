@@ -60,6 +60,7 @@ AudioSystemImpl_FMOD::AudioSystemImpl_FMOD(const char* assetPlatformName)
     : m_studioSystem(nullptr)
     , m_masterBank(nullptr)
     , m_masterStringsBank(nullptr)
+    , m_globalAudioObjectId(INVALID_AUDIO_OBJECT_ID)
 {
     AudioSystemImplementationRequestBus::Handler::BusConnect();
     AudioSystemImplementationNotificationBus::Handler::BusConnect();
@@ -116,16 +117,15 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
 
     m_studioSystem->setAdvancedSettings(&studioSettings);
 
-    FMOD::System* coreSystem = nullptr;
-    m_studioSystem->getCoreSystem(&coreSystem);
+    m_studioSystem->getCoreSystem(&m_lowlvlSystem);
 
     FMOD_ADVANCEDSETTINGS coreSettings;
     coreSettings.profilePort = CVars::s_FMODCore_ProfilePort;
     coreSettings.cbSize = sizeof(FMOD_ADVANCEDSETTINGS);
 
-    coreSystem->setAdvancedSettings(&coreSettings);
+    m_lowlvlSystem->setAdvancedSettings(&coreSettings);
 
-    coreSystem->setFileSystem(
+    m_lowlvlSystem->setFileSystem(
                 SyncIO::AzFileOpen,
                 SyncIO::AzFileClose,
                 SyncIO::AzFileRead,
@@ -173,10 +173,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     }
 
     m_studioSystem->setNumListeners(CVars::s_FMOD_MaxListeners); //@TODO: Should be left as a Cvar?
-    for(int i = CVars::s_FMOD_MaxListeners-1; i >= 1; --i) //We leave index 0 as the default listener.
-    {
-        m_availableListeners.push_back(false);
-    }
 
     return EAudioRequestStatus::Success;
 }
@@ -196,40 +192,66 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
     m_studioSystem->getBus("bus:/", &masterBus);
     if(masterBus)
     {
-        masterBus->stopAllEvents(FMOD_STUDIO_STOP_ALLOWFADEOUT);
+        masterBus->stopAllEvents(FMOD_STUDIO_STOP_IMMEDIATE);
         return EAudioRequestStatus::Success;
     }
+
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData *, const char *) {
-    // FMOD Has no motion of "Audio Objects" like wwise..
-    return EAudioRequestStatus::Success;
-}
-
-EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *) {
-    // Same here either.
-    return EAudioRequestStatus::Success;
-}
-
-EAudioRequestStatus AudioSystemImpl_FMOD::ResetAudioObject(IATLAudioObjectData *objectData) {
-    if(objectData)
+EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData * objectData, const char *objectName)
+{
+    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    if(!obj)
     {
+        return EAudioRequestStatus::Failure;
+    }
+
+    auto it = std::find(m_registeredAudioObjects.begin(), m_registeredAudioObjects.end(), obj);
+    if(it == m_registeredAudioObjects.end())
+    {
+        obj->m_name = objectName;
+        m_registeredAudioObjects.push_back(obj);
+        return EAudioRequestStatus::Success;
+    }
+
+    AZ_Error("FMODAudioSystem", false, "Attempt to register an object twice!");
+    return EAudioRequestStatus::Failure;
+}
+
+EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *objectData)
+{
+    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    if(!obj)
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    auto it = std::find(m_registeredAudioObjects.begin(), m_registeredAudioObjects.end(), obj);
+    if(it != m_registeredAudioObjects.end())
+    {
+        m_registeredAudioObjects.erase(it);
+        return EAudioRequestStatus::Success;
+    }
+
+    AZ_Error("FMODAudioSystem", false, "Entry not found trying to find object to unregister");
+    return EAudioRequestStatus::Failure;
+}
+
+EAudioRequestStatus AudioSystemImpl_FMOD::ResetAudioObject(IATLAudioObjectData *objectData)
+{
+    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    if(obj)
+    {
+        obj->Reset();
         return EAudioRequestStatus::Success;
     }
 
     return EAudioRequestStatus::Failure;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::UpdateAudioObject(IATLAudioObjectData *objectData) {
-    auto audioObject = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-    if(!audioObject)
-    {
-        return EAudioRequestStatus::FailureInvalidObjectId;
-    }
-
-    ClearStoppedEventInstances(objectData);
-
+EAudioRequestStatus AudioSystemImpl_FMOD::UpdateAudioObject([[maybe_unused]]IATLAudioObjectData *objectData)
+{
     return EAudioRequestStatus::Success;
 }
 
@@ -311,9 +333,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *ob
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
-    AZ_WarningOnce("FMODAudioSystem", false, "Set Obstruction is not supported yet in this FMOD implementation, only occlusion");
     auto fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-
 
     if(fmodObj)
     {
@@ -340,7 +360,10 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
         return Audio::EAudioRequestStatus::Failure;
     }
 
-    return EAudioRequestStatus::Success;
+    ldata->m_attributes = Utils::CreateFMOD3DAttributes(newPosition.GetPositionVec(), newPosition.GetForwardVec(), newPosition.GetUpVec());
+    FMOD_RESULT res = m_studioSystem->setListenerAttributes(ldata->m_id, &ldata->m_attributes);
+
+    return (res == FMOD_OK) ? EAudioRequestStatus::Success : EAudioRequestStatus::Failure;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {
@@ -520,35 +543,33 @@ const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntry
 
 IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode) {
     SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
+    if(!audioTriggerNode)
+    {
+        return nullptr;
+    }
 
-    if(audioTriggerNode && azstricmp(audioTriggerNode->name(), XMLTags::FMODEventTag) == 0) {
-        //Get the ATL Control Trigger name for debug purposes:
-        AZStd::string atlName;
-        if(audioTriggerNode->parent())
+    //Get the ATL Control Trigger name for debug purposes:
+    AZStd::string atlName;
+    if(audioTriggerNode->parent())
+    {
+        const char* parentName = audioTriggerNode->parent()->name();
+        if(azstricmp(parentName, "ATLTrigger") == 0)
         {
-            const char* parentName = audioTriggerNode->parent()->name();
-            if(azstricmp(parentName, "ATLTrigger") == 0)
+            auto atlnameAttr = audioTriggerNode->parent()->first_attribute("atl_name");
+            if(atlnameAttr)
             {
-                auto atlnameAttr = audioTriggerNode->parent()->first_attribute("atl_name");
-                if(atlnameAttr)
-                {
-                    atlName = atlnameAttr->value();
-                }
-            }
-        }
-        auto eventNameAttr = audioTriggerNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
-        //auto preloadSampleDataAttr = audioTriggerNode->first_attribute(XMLTags::FMODSamplePreloadAttr, 0, false);
-        auto actionAttr = audioTriggerNode->first_attribute(XMLTags::FMODEvtAction, 0, false);
-        if(eventNameAttr)
-        {
-            //const char* eventName = eventNameAttr->value();
-            newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (), Audio::AudioImplAllocator);
-            if(actionAttr)
-            {
-                //auto actionStr = actionAttr->value();
+                atlName = atlnameAttr->value();
             }
         }
     }
+
+    if(AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODEventTag))
+    {
+    }
+    else if (AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODSnapshot))
+    {
+    }
+
     return newTriggerImpl;
 }
 
@@ -590,13 +611,16 @@ void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplDat
     azdestroy(oldEnvironmentData, Audio::AudioImplAllocator, SATLEnvironmentImplData_FMOD);
 }
 
-IATLAudioObjectData *AudioSystemImpl_FMOD::NewGlobalAudioObjectData(TAudioObjectID objectId) {
-    return NewAudioObjectData(objectId);
+IATLAudioObjectData *AudioSystemImpl_FMOD::NewGlobalAudioObjectData(TAudioObjectID objectId)
+{
+    auto obj = azcreate(SATLAudioObjectData_FMOD, (objectId), Audio::AudioImplAllocator);
+    m_globalAudioObjectId = objectId;
+    return obj;
 }
 
-IATLAudioObjectData *AudioSystemImpl_FMOD::NewAudioObjectData(TAudioObjectID objectId) {
-    AZ_UNUSED(objectId);
-    return nullptr;
+IATLAudioObjectData *AudioSystemImpl_FMOD::NewAudioObjectData(TAudioObjectID objectId)
+{
+    return azcreate(SATLAudioObjectData_FMOD, (objectId), Audio::AudioImplAllocator);
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioObjectData(IATLAudioObjectData *oldObjectData) {
@@ -606,18 +630,12 @@ void AudioSystemImpl_FMOD::DeleteAudioObjectData(IATLAudioObjectData *oldObjectD
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewDefaultAudioListenerObjectData(TATLIDType objectId) {
-    return nullptr;
+    return azcreate(SATLListenerData_FMOD, (0), Audio::AudioImplAllocator);
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewAudioListenerObjectData(TATLIDType objectId) {
-    if(m_availableListeners.empty())
-    {
-        AZ_Error("FMODAudioSystem", false, "There's no more available listeners to create!");
-        return nullptr;
-    }
-
-    return nullptr;
-
+    static int id = 0;
+    return azcreate(SATLListenerData_FMOD, (++id), Audio::AudioImplAllocator);
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldListenerData) {
@@ -638,6 +656,7 @@ void AudioSystemImpl_FMOD::ResetAudioEventData(IATLEventData *eventData) {
     auto event = static_cast<SATLEventData_FMOD*>(eventData);
     if(event)
     {
+        event->Reset();
     }
 }
 
@@ -720,10 +739,13 @@ void AudioSystemImpl_FMOD::OnAudioSystemMuteAll() {
     // iterate each one and call FMOD::Studio::Bus::Mute() then Unmute().
     // This was proposed as a solution by an Firelight FMOD engineer!:
     // https://qa.fmod.com/t/how-to-make-an-mute-unmute-button/18840/5
+
+    MuteFMODMasterBus(true);
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemUnmuteAll() {
     //See comments from OnAudioSystemMuteAll().
+    MuteFMODMasterBus(false);
 }
 
 void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
@@ -818,6 +840,19 @@ void AudioSystemImpl_FMOD::SetBankPaths()
     m_localizedFMODBankPath = bankPath;
 
     SetBanksRootPath(m_fmodBankPath);
+}
+
+EAudioRequestStatus AudioSystemImpl_FMOD::MuteFMODMasterBus(bool mute)
+{
+    FMOD::Studio::Bus* mBus = nullptr;
+    FMOD_RESULT res = m_studioSystem->getBus("bus:/", &mBus);
+
+    if(mBus)
+    {
+        mBus->setMute(mute);
+    }
+
+    return (res == FMOD_OK) ? EAudioRequestStatus::Success : EAudioRequestStatus::Failure;
 }
 
 void AudioSystemImpl_FMOD::StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData *sndObj)

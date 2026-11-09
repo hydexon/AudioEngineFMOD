@@ -10,19 +10,19 @@
 
 namespace AudioEngineFMOD {
 
-void SetComboboxIndexFromAction(FMODEventAction action, QComboBox* cb)
+void SetComboboxIndexFromAction(FMODEventType action, QComboBox* cb)
 {
     switch(action) {
-    case FMODEventAction::Play:
+    case FMODEventType::Play:
         cb->setCurrentIndex(0);
         break;
-    case FMODEventAction::Pause:
+    case FMODEventType::Pause:
         cb->setCurrentIndex(1);
         break;
-    case FMODEventAction::Resume:
+    case FMODEventType::Resume:
         cb->setCurrentIndex(2);
         break;
-    case FMODEventAction::Stop:
+    case FMODEventType::Stop:
         cb->setCurrentIndex(3);
         break;
     default:
@@ -30,15 +30,15 @@ void SetComboboxIndexFromAction(FMODEventAction action, QComboBox* cb)
     }
 }
 
-FMODEventAction GetEventActionFromComboBox(QComboBox* cb)
+FMODEventType GetEventActionFromComboBox(QComboBox* cb)
 {
     switch(cb->currentIndex())
     {
-    case 0: return FMODEventAction::Play;
-    case 1: return FMODEventAction::Pause;
-    case 2: return FMODEventAction::Resume;
-    case 3: return FMODEventAction::Stop;
-    default: return FMODEventAction::Unknown;
+    case 0: return FMODEventType::Play;
+    case 1: return FMODEventType::Pause;
+    case 2: return FMODEventType::Resume;
+    case 3: return FMODEventType::Stop;
+    default: return FMODEventType::Unknown;
     }
 }
 
