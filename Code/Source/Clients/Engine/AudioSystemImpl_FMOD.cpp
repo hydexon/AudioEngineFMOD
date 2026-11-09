@@ -281,21 +281,30 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *o
     return result;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData) {
-    EAudioRequestStatus result = EAudioRequestStatus::Success;
-    //this->StopAllEvents(objectData);
+EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData)
+{
+    EAudioRequestStatus result = EAudioRequestStatus::Failure;
     auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
-    //auto implObjData = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-
-
     if(implEvtData)
     {
+        FMOD_RESULT res = implEvtData->m_evtInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+        if(res == FMOD_OK)
+        {
+            result = EAudioRequestStatus::Success;
+        }
     }
     return result;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *objectData) {
-    StopAllAndClearInstancesFromAudioObject(objectData);
+EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *objectData)
+{
+    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    if(!obj)
+    {
+        return EAudioRequestStatus::Failure;
+    }
+
+    obj->StopAllEvents();
     return EAudioRequestStatus::Success;
 }
 
@@ -306,7 +315,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objec
         return EAudioRequestStatus::FailureInvalidObjectId;
     }
 
-
+    fmodObj->Set3DAttributes(worldPosition);
     return EAudioRequestStatus::Success;
 }
 
@@ -527,11 +536,13 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
     return result;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldAudioFileEntryData) {
+void AudioSystemImpl_FMOD::DeleteAudioFileEntryData(IATLAudioFileEntryData *oldAudioFileEntryData)
+{
     azdestroy(oldAudioFileEntryData, Audio::AudioImplAllocator, SATLAudioFileEntryData_FMOD);
 }
 
-const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo) {
+const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntryInfo *fileEntryInfo)
+{
 
     if(fileEntryInfo)
     {
@@ -541,7 +552,8 @@ const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntry
     return nullptr;
 }
 
-IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode) {
+IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode)
+{
     SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
     if(!audioTriggerNode)
     {

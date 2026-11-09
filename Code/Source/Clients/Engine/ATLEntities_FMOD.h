@@ -19,12 +19,15 @@ namespace AudioEngineFMOD
         virtual ~SATLAudioObjectData_FMOD() {}
 
         void Reset();
+        void Set3DAttributes(const Audio::SATLWorldPosition& attribs);
+        void SetObstructionAndOcclusion(float obstruction, float occlusion);
+
         bool ApplyEvent(SATLEventData_FMOD* event);
         void RemoveEvent(SATLEventData_FMOD* event);
         void StopEvent(uint32_t eventId);
         void StopAllEvents();
 
-        void ApplyParameter(SATLParameterRtpc_FMOD* param);
+        void ApplyParameter(SATLParameterRtpc_FMOD* param, float value);
         void RemoveParameter(SATLParameterRtpc_FMOD* param);
 
         void ApplySwitch(SATLSwitchStateImplData_FMOD* switchImpl);
@@ -49,9 +52,9 @@ namespace AudioEngineFMOD
             : m_eventId(AudioEvtId)
         {};
 
-        bool CheckOcclusionEnabled();
+        bool PrepareForOcclusion();
         void SetObstructionOcclusion(float obstruction, float occlusion);
-        void TrySetEnvironment(SATLEnvironmentImplData_FMOD* envData);
+        void TrySetEnvironment(SATLEnvironmentImplData_FMOD* envData, float value);
         void Reset();
 
         Audio::TAudioEventID m_eventId;
@@ -59,9 +62,10 @@ namespace AudioEngineFMOD
         float m_lpfMax = 0.0f;
         float m_lpfMin = 0.0f;
 
+        bool m_occlusionParamFound;
         FMOD::Studio::EventInstance* m_evtInstance;
         FMOD::ChannelGroup* m_masterTrack;
-        FMOD::DSP* m_lp;
+        FMOD::DSP* m_lpFilter;
         FMOD_STUDIO_PARAMETER_ID m_occlusionParamID;
 
         SATLAudioObjectData_FMOD* m_audioObject;
@@ -88,6 +92,7 @@ namespace AudioEngineFMOD
         uint32_t m_eventPathId;
         FMODEventType m_eventAction;
         FMOD::Studio::EventDescription* m_eventDescription;
+        FMOD_STUDIO_PARAMETER_ID m_occlusionParam;
         FMOD_GUID m_guid;
     };
 

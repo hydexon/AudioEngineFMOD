@@ -5,6 +5,9 @@
 
 namespace AudioEngineFMOD
 {
+    FMODSwitchToIdMap g_SwitchToID;
+    FMODParamToIDMap g_ParameterToID;
+
     namespace Utils
     {
 
