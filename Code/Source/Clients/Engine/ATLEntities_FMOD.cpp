@@ -141,10 +141,34 @@ void SATLAudioObjectData_FMOD::ApplyParameter(SATLParameterRtpc_FMOD *param, flo
             }
             else
             {
+                int paramCount = 0;
+                event->m_description->getParameterDescriptionCount(&paramCount);
+
+                for(int i = 0; i < paramCount; ++i)
+                {
+                    FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                    event->m_description->getParameterDescriptionByIndex(i, &paramDesc);
+
+                    if(AZ::StringFunc::Equal(param->m_name, paramDesc.name))
+                    {
+                        it->second = ParamId { true, paramDesc.id };
+                        event->m_evtInstance->setParameterByID(paramDesc.id, param->m_mult * value + param->m_shift);
+                        break;
+                    }
+                }
 
             }
         }
+    }
 
+    auto match = m_params.find(param);
+    if(match != m_params.end() )
+    {
+        match->second = value;
+    }
+    else
+    {
+        m_params.emplace(param, value);
     }
 }
 
@@ -157,7 +181,47 @@ void SATLAudioObjectData_FMOD::RemoveParameter(SATLParameterRtpc_FMOD *param)
 
 void SATLAudioObjectData_FMOD::ApplySwitch(SATLSwitchStateImplData_FMOD *switchImpl)
 {
+    for(auto event : m_events)
+    {
+        if(event->m_eventId == switchImpl->eventPathId)
+        {
+            auto it = g_SwitchToID.find(switchImpl);
+            if(it != g_SwitchToID.end())
+            {
+                if(it->second.valid)
+                {
+                    event->m_evtInstance->setParameterByID(it->second.id, switchImpl->value);
+                }
+                else
+                {
+                    int paramCount = 0;
+                    event->m_description->getParameterDescriptionCount(&paramCount);
 
+                    for(int i = 0; i < paramCount; ++i)
+                    {
+                        FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                        event->m_description->getParameterDescriptionByIndex(i, &paramDesc);
+                        if(AZ::StringFunc::Equal(switchImpl->m_name, paramDesc.name))
+                        {
+                            it->second =  ParamId { true, paramDesc.id };
+                            event->m_evtInstance->setParameterByID(paramDesc.id, switchImpl->value);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    auto it = m_switches.find(switchImpl->eventPathId);
+    if(it != m_switches.end())
+    {
+        it->second = switchImpl;
+    }
+    else
+    {
+        m_switches.emplace(switchImpl->eventPathId, switchImpl);
+    }
 }
 
 
@@ -167,9 +231,30 @@ void SATLAudioObjectData_FMOD::RemoveSwitch(SATLSwitchStateImplData_FMOD *switch
 }
 
 
-void SATLAudioObjectData_FMOD::ApplyEnvironment(SATLEnvironmentImplData_FMOD *env)
+void SATLAudioObjectData_FMOD::ApplyEnvironment(SATLEnvironmentImplData_FMOD *env, float value)
 {
+    bool isSet = true;
+    auto it = m_environments.find(env);
+    if(it != m_environments.end())
+    {
+        isSet = AZ::Abs(it->second - value) > 0.001f;
+        if(isSet)
+        {
+            it->second = value;
+        }
+    }
+    else
+    {
+        m_environments.emplace(env, value);
+    }
 
+    if(isSet)
+    {
+        for(auto event : m_events)
+        {
+            event->TrySetEnvironment(env, value);
+        }
+    }
 }
 
 
@@ -303,6 +388,7 @@ void SATLEventData_FMOD::Reset()
 
     m_eventPathId = 0;
     m_masterTrack = nullptr;
+    m_description = nullptr;
 }
 
 }

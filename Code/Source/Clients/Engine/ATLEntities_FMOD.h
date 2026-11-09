@@ -33,7 +33,7 @@ namespace AudioEngineFMOD
         void ApplySwitch(SATLSwitchStateImplData_FMOD* switchImpl);
         void RemoveSwitch(SATLSwitchStateImplData_FMOD* switchImpl);
 
-        void ApplyEnvironment(SATLEnvironmentImplData_FMOD* env);
+        void ApplyEnvironment(SATLEnvironmentImplData_FMOD* env, float value);
         void RemoveEnvironment(SATLEnvironmentImplData_FMOD* env);
 
         Audio::TAudioControlID m_id;
@@ -63,6 +63,7 @@ namespace AudioEngineFMOD
         float m_lpfMin = 0.0f;
 
         bool m_occlusionParamFound;
+        FMOD::Studio::EventDescription* m_description;
         FMOD::Studio::EventInstance* m_evtInstance;
         FMOD::ChannelGroup* m_masterTrack;
         FMOD::DSP* m_lpFilter;
@@ -85,6 +86,7 @@ namespace AudioEngineFMOD
         uint32_t m_eventPathId;
         float const m_mult;
         float const m_shift;
+        AZStd::fixed_string<256> m_name;
     };
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
