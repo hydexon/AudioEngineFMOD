@@ -73,7 +73,7 @@ namespace AudioEngineFMOD
         FMOD_3D_ATTRIBUTES CreateFMOD3DAttributes(const AZ::Vector3& pos,
                                                   const AZ::Vector3& fw,
                                                   const AZ::Vector3& up,
-                                                  const AZ::Vector3& vel = AZ::Vector3::CreateOne());
+                                                  const AZ::Vector3& vel = AZ::Vector3::CreateZero());
 
     }
 
