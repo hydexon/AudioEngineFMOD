@@ -577,6 +577,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
 
     if(AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODEventTag))
     {
+
     }
     else if (AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODSnapshot))
     {
