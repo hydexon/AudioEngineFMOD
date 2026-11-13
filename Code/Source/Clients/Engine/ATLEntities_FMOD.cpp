@@ -10,6 +10,7 @@ namespace AudioEngineFMOD
 
 SATLAudioObjectData_FMOD::SATLAudioObjectData_FMOD(Audio::TAudioControlID id)
     : m_id(id)
+    , m_attributes({})
 {
     m_events.reserve(4);
 }

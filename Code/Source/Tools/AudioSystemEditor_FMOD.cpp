@@ -24,6 +24,7 @@ namespace AudioEngineFMOD
 
 TImplControlType TagToType(const AZStd::string_view tag)
 {
+#if 0
     if(tag == XMLTags::FMODEventTag)
     {
         return eFMOD_EVENT;
@@ -36,12 +37,13 @@ TImplControlType TagToType(const AZStd::string_view tag)
     {
         return eFMOD_SOUNDBANK;
     }
-
+#endif
     return eFMOD_INVALID;
 }
 
 const AZStd::string_view TypeToTag(const TImplControlType type)
 {
+#if 0
     switch(type)
     {
     case eFMOD_EVENT:
@@ -53,7 +55,7 @@ const AZStd::string_view TypeToTag(const TImplControlType type)
     default:
         break;
     }
-
+#endif
     return "";
 }
 
@@ -78,7 +80,7 @@ CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
     m_paramsCtrl.SetParent(&m_rootControl);
     m_rootControl.AddChild(&m_paramsCtrl);
 
-    m_loader.Load(this, &m_rootControl, &m_localizedParentControl);
+    m_loader.Load(this);
 }
 
 void CAudioSystemEditor_FMOD::Reload()
@@ -94,7 +96,7 @@ void CAudioSystemEditor_FMOD::Reload()
         }
     }
 
-    m_loader.Load(this,&m_rootControl, &m_localizedParentControl);
+    m_loader.Load(this);
     {
         m_currentLanguageName.clear();
         if(auto console = AZ::Interface<AZ::IConsole>::Get())
@@ -253,7 +255,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     {
         return nullptr;
     }
-
+#if 0
     IAudioSystemControl* control = nullptr;
     TConnectionPtr connection;
 
@@ -362,12 +364,13 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
         }
         return AZStd::make_shared<IAudioConnection>(control->GetId());
     }
-
+#endif
     return nullptr;
 }
 
 AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
 {
+#if 0
     const IAudioSystemControl* control = GetControl(connection->GetID());
     if(!control)
     {
@@ -444,6 +447,7 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
     default:
         return nullptr;
     }
+#endif
     return nullptr;
 }
 
@@ -451,6 +455,7 @@ const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIcon(AudioControls::TIm
 {
     switch(type)
     {
+#if 0
     case eFMOD_EVENT:
         return ":/Editor/EditorFMODIcons/events.png";
     case eFMOD_PARAMETER:
@@ -461,6 +466,7 @@ const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIcon(AudioControls::TIm
         return ":/Editor/EditorFMODIcons/soundbank.png";
     case eFMOD_SNAPSHOT:
         return ":/Editor/EditorFMODIcons/snapshot.png";
+#endif
     default:
         return ":/Editor/EditorFMODIcons/invalid.png";
     }
@@ -479,7 +485,7 @@ AZStd::string CAudioSystemEditor_FMOD::GetName() const
 AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 {
     auto projectPath = AZ::IO::FixedMaxPath( AZ::Utils::GetProjectPath() );
-    return (projectPath / "Assets" / "Audio" / "FMOD"  );
+    return (projectPath / "Assets" / "Audio" / "FMOD" / "FMOD_Project" );
 }
 
 void CAudioSystemEditor_FMOD::DataSaved()
@@ -496,22 +502,7 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
     if(!control)
         return nullptr;
 
-    switch(control->GetType())
-    {
-        case eFMOD_SOUNDBANK:
-            return new LoadSampleDataForm(connection);
-        case eFMOD_EVENT:
-        case eFMOD_SNAPSHOT:
-            return new EventPropertiesForm(connection, control->GetType());
-        default:
-            return nullptr;
-    }
-}
-
-bool CAudioSystemEditor_FMOD::IsFMODParameterGlobal(const AZStd::string_view paramPath)
-{
-    auto paramIt = m_loader.GetEventParameters().find(paramPath);
-    return paramIt == m_loader.GetEventParameters().end();
+    return nullptr;
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const

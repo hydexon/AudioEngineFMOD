@@ -3,6 +3,9 @@
 #include <ACETypes.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <IAudioSystemControl.h>
+#include <AzCore/IO/Path/Path.h>
+#include <AzCore/XML/rapidxml.h>
 
 namespace AudioControls
 {
@@ -16,18 +19,23 @@ namespace AudioEngineFMOD
     class CAudioFMODDataLoader
     {
     public:
-        void Load(CAudioSystemEditor_FMOD* audioSystemImpl, AudioControls::IAudioSystemControl* parent, AudioControls::IAudioSystemControl* locParent);
-        AZStd::string_view GetEventGUID(AZStd::string_view eventPath);
-        const AZStd::unordered_map<AZStd::string, float>& GetEventParameters() const;
-
+        void Load(CAudioSystemEditor_FMOD* audioSystemImpl);
     private:
         friend class CAudioSystemEditor_FMOD;
 
-        void LoadControlsForEvents(const AZStd::string_view infoPath, AudioControls::IAudioSystemControl* parent, AudioControls::IAudioSystemControl* locParent); //TODO: This might be temporal.
         CAudioSystemEditor_FMOD* m_audioSystemImpl = nullptr;
+        AZ::IO::FixedMaxPath m_path;
 
-        AZStd::unordered_map<AZStd::string, float> m_eventParameters;
-        AZStd::unordered_map<AZStd::string, std::vector<AZStd::string>> m_parameterLabels;
-        AZStd::unordered_map<AZStd::string, AZStd::string> m_eventGUIDs;
+        void ScanFolder(const AZ::IO::FixedMaxPath& folderPath);
+        void ParseFile(const AZ::IO::FixedMaxPath& filePath);
+
+        AudioControls::IAudioSystemControl* LoadFolder(const AZ::rapidxml::xml_node<>* node);
+        AudioControls::IAudioSystemControl* LoadEvent(const AZ::rapidxml::xml_node<>* node);
+        AudioControls::IAudioSystemControl* LoadSnapshot(const AZ::rapidxml::xml_node<>* node);
+        AudioControls::IAudioSystemControl* LoadGroup(const AZ::rapidxml::xml_node<>* node);
+        AudioControls::IAudioSystemControl* LoadReturn(const AZ::rapidxml::xml_node<>* node);
+        AudioControls::IAudioSystemControl* LoadParameter(const AZ::rapidxml::xml_node<>* node,
+                                                          AudioControls::IAudioSystemControl* ctrl, int fmodCtrlType);
+
     };
 }
