@@ -111,7 +111,7 @@ function exportFmodProjectData(outFilePath)
 
     var exportData = {
         banks,
-        //events,
+        events,
         parameters,
         snapshots,
         groups,

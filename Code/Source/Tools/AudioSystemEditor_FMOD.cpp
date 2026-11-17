@@ -92,12 +92,42 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::GetControl(AudioCon
 
 AudioControls::EACEControlType CAudioSystemEditor_FMOD::ImplTypeToATLType(AudioControls::TImplControlType type) const
 {
-    return AudioControls::eACET_NUM_TYPES;
+    switch(type)
+    {
+    case eFMOD_EVENT:
+    case eFMOD_SNAPSHOT:
+        return AudioControls::eACET_TRIGGER;
+    case eFMOD_EVENT_PARAMETER:
+    case eFMOD_SNAPSHOT_PARAMETER:
+    case eFMOD_GLOBAL_PARAMETER:
+        return AudioControls::eACET_RTPC;
+    case eFMOD_SOUNDBANK:
+        return AudioControls::eACET_PRELOAD;
+    case eFMOD_RETURN:
+        return AudioControls::eACET_ENVIRONMENT;
+    default:
+        return AudioControls::eACET_NUM_TYPES;
+    }
 }
 
 AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(AudioControls::EACEControlType atlControlType) const
 {
-    return AudioControls::AUDIO_IMPL_INVALID_TYPE;
+    switch(atlControlType)
+    {
+    case AudioControls::eACET_PRELOAD:
+        return eFMOD_SOUNDBANK;
+    case AudioControls::eACET_TRIGGER:
+        return eFMOD_EVENT | eFMOD_SNAPSHOT;
+    case AudioControls::eACET_RTPC:
+        return eFMOD_EVENT_PARAMETER | eFMOD_SNAPSHOT_PARAMETER | eFMOD_GLOBAL_PARAMETER;
+    case AudioControls::eACET_SWITCH:
+    case AudioControls::eACET_SWITCH_STATE:
+        return eFMOD_EVENT_PARAMETER | eFMOD_SNAPSHOT_PARAMETER | eFMOD_GLOBAL_PARAMETER;
+    case AudioControls::eACET_ENVIRONMENT:
+        return eFMOD_RETURN;
+    default:
+        return AudioControls::AUDIO_IMPL_INVALID_TYPE;
+    }
 }
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
@@ -138,7 +168,7 @@ AZStd::string CAudioSystemEditor_FMOD::GetName() const
 AZ::IO::FixedMaxPath CAudioSystemEditor_FMOD::GetDataPath() const
 {
     auto projectPath = AZ::IO::FixedMaxPath( AZ::Utils::GetProjectPath() );
-    return (projectPath / "Assets" / "Audio" / "FMOD" / "FMOD_Project" );
+    return (projectPath / "Assets" / "Audio" / "FMOD" );
 }
 
 void CAudioSystemEditor_FMOD::DataSaved()
