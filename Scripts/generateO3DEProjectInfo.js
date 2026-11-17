@@ -1,117 +1,133 @@
 
 studio.menu.addMenuItem({
     name: "O3DE FMOD AudioSystem\\Generate FMOD Project Info",
-    execute: function() {
-        outputAllBanksEvents();
+    execute: () => {
+        var outputPath = studio.project.filePath;
+        var projectName = outputPath.substr(outputPath.lastIndexOf("/") + 1, outputPath.length);
+        projectName =  projectName.substring(0, projectName.lastIndexOf('.'));
+        outputPath  = outputPath.substr(0, outputPath.lastIndexOf("/") + 1) + 'FMODProjectInfo.json';
+        if(exportFmodProjectData(outputPath))
+        {
+            alert("JSON file successfully created at, please copy it to your O3DE project's Assets/Audio/FMOD/ directory:\n\n{0}".format(outputPath));
+        }
+        else
+        {
+            alert("Failed to open file {0}\n\nCheck the file is not read-only.".format(outFilePath));
+        }
     }
 });
 
-
-function outputAllBanksEvents()
-{
-    /*
-    studio.ui.showModalDialog({
-        windowTitle: 'O3DE Project Information',
-        widgetType: studio.ui.widgetType.Layout,
-        layout: studio.ui.layoutType.VBoxLayout,
-        items: [
-        {
-            widgetType: studio.ui.widgetType.PathLineEdit,
-            label: "O3DE Project's Audio Controls directory",
-            pathType: studio.ui.pathType.Directory
-        },
-        {
-            widgetType: studio.ui.widgetType.PathLineEdit,
-            label: 'Bank Dependencies Output Folder',
-            pathType: studio.ui.pathType.Directory
-        },
-        {
-            widgetType: studio.ui.widgetType.CheckBox,
-            text: "Create Default Controls XML for all events"
-        }
-        ]
-
-    });
-    */
-
-    var outputPath = studio.project.filePath;
-    var projectName = outputPath.substr(outputPath.lastIndexOf("/") + 1, outputPath.length);
-    projectName =  projectName.substring(0, projectName.lastIndexOf('.'));
-    outputPath  = outputPath.substr(0, outputPath.lastIndexOf("/") + 1) + 'FMODProjectInfo.json';
-    console.log(outputPath);
-
-    var allbanks  = studio.project.model.Bank.findInstances({includeDerivedTypes: true});
-    var allEvents = studio.project.model.Event.findInstances();
-    var allParams = studio.project.model.ParameterPreset.findInstances();
-    var allBuses = studio.project.model.MixerGroup.findInstances();
-    allBuses = allBuses.concat(studio.project.model.MixerReturn.findInstances());
-    allBuses = allBuses.concat(studio.project.workspace.mixer.masterBus);
-
-    var evts = [];
-    allEvents.forEach(function(evt){
-        evts.push({
-            path: evt.getPath(),
-            id: evt.id
-        });
-    });
-
-    var banks = [];
-    allbanks.forEach(function(bnk) {
-        var bnkEvts = [];
-        bnk.events.forEach(function(evt){
-            bnkEvts.push(evt.getPath());
-        });
-        banks.push({
-            name: bnk.name,
-            isLocalized: bnk.audioTable !== undefined && bnk.audioTable !== null,
-            events: bnkEvts
-        });
-    });
-
-    var params = [];
-    allParams.forEach(function(ps) {
-        params.push({
-            path: ps.getPath(),
-            labels: ps.parameter.enumerationLabels,
-            isGlobal: ps.parameter.isGlobal,
-            minimum: ps.parameter.minimum,
-            maximum: ps.parameter.maximum,
-            initialValue: ps.parameter.initialValue
-        });
-    });
-
-    var buses = [];
-    allBuses.forEach(function(bus) {
-        buses.push(bus.getPath());
-    });
-    var allSnapshots = studio.project.model.Snapshot.findInstances();
-    var snapshts = [];
-    allSnapshots.forEach(function(ss){
-        snapshts.push({
-            id: ss.id,
-            path:ss.getPath()
-        });
-    });
-
-    var FMODExportData = {
-        events: evts,
-        banks: banks,
-        parameters: params,
-        buses: buses,
-        snapshots: snapshts
-    };
-
-    var jsonFile = studio.system.getFile(outputPath);
-    if (!jsonFile.open(studio.system.openMode.WriteOnly)) {
-        alert("Failed to open file {0}\n\nCheck the file is not read-only.".format(outputPath));
-        console.error("Failed to open file {0}.".format(outputPath));
+studio.project.buildEndedConnect( success => {
+    if(!success) { //Don't generate O3DE project info if the build failed.
         return;
     }
 
-    jsonFile.writeText(JSON.stringify(FMODExportData, null, 2));
+    //Go a directory up!
+    var path = studio.project.workspace.builtBanksOutputDirectory;
+    if (path.endsWith("/")) path = path.substring(0,path.length-1)
+        const lastSlashPosition = path.lastIndexOf("/");
+
+    var outputInfoPath = path.substring(0,lastSlashPosition);
+    outputInfoPath += "/" + "FMODProjectInfo.json";
+
+    if(!exportFmodProjectData(outputInfoPath))
+    {
+        console.log("Failure creating O3DE Project Info in the postbuild event");
+    }
+});
+
+function exportFmodProjectData(outFilePath)
+{
+    var allBanks  = studio.project.model.Bank.findInstances({includeDerivedTypes: true});
+    var allEvents = studio.project.model.Event.findInstances();
+    var allSnapshots = studio.project.model.Snapshot.findInstances();
+    var allParams = studio.project.model.ParameterPreset.findInstances();
+    var allGroups = studio.project.model.MixerGroup.findInstances();
+    var allReturns = studio.project.model.MixerReturn.findInstances();
+
+    const getParameters = (paramPresets) => {
+        return paramPresets.map( pp => {
+            return {
+                name: pp.presetOwner.name,
+                path: pp.presetOwner.getPath(),
+                initialValue: pp.initialValue,
+                labels: pp.enumerationLabels,
+                minimum: pp.minimum,
+                maximum: pp.maximum
+            };
+        });
+    };
+
+    var banks = allBanks.map( bank => {
+        var evts = bank.events.map( evt => {
+            return {
+                name: evt.name,
+                path: evt.getPath(),
+                parameters: getParameters(evt.getParameterPresets())
+            };
+        } );
+
+        return {
+            name: bank.name,
+            isLocalized: bank.audioTable !== undefined && bank.audioTable !== null,
+            events: evts
+        };
+    });
+
+    var events = allEvents.map( evt => {
+        return {
+            name: evt.name,
+            path: evt.getPath(),
+            parameters: getParameters(evt.getParameterPresets())
+        };
+    });
+
+    var parameters = allParams.filter( pp => pp.parameter.isGlobal == true).map(pp => {
+        return {
+            name: pp.name,
+            path: pp.getPath(),
+            initialValue: pp.parameter.initialValue,
+            labels: pp.parameter.enumerationLabels,
+            minimum: pp.parameter.minimum,
+            maximum: pp.parameter.maximum
+        };
+    });
+
+    var snapshots = allSnapshots.map( ss => {
+        return {
+            name: ss.name,
+            path: ss.getPath(),
+            params: getParameters(ss.getParameterPresets())
+        }
+    });
+
+    var groups = allGroups.map( mg => ({
+        name: mg.name,
+        path: mg.getPath(),
+        output: mg.output?.getPath() //TODO: Should be name instead?
+    }));
+
+    var returns = allReturns.map( r => ({ name: r.name, path: r.getPath(), output: r.output?.getPath() }));
+
+    var exportData = {
+        banks,
+        //events,
+        parameters,
+        snapshots,
+        groups,
+        returns
+    };
+
+    var jsonFile = studio.system.getFile(outFilePath);
+    if (!jsonFile.open(studio.system.openMode.WriteOnly)) {
+        console.log("Failed to open file {0}.".format(outFilePath));
+        return false;
+    }
+
+    jsonFile.writeText(JSON.stringify(exportData, null, 2));
     jsonFile.close();
 
-    alert("JSON file successfully created at, please copy it to your O3DE project's Assets/Audio/FMOD/ directory:\n\n{0}".format(outputPath));
-    console.log("JSON file successfully created at: " + outputPath);
+    console.log("JSON file successfully created at: " + outFilePath);
+    return true;
 
 }
