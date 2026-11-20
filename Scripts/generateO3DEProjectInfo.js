@@ -36,13 +36,13 @@ studio.project.buildEndedConnect( success => {
     }
 });
 
-function exportFmodProjectData(outFilePath)
-{
+function isStringEmpty(value) {
+    return value == null || (typeof value === "string" && value.trim().length === 0);
+}
+
+function exportFmodProjectData(outFilePath) {
+
     var allBanks  = studio.project.model.Bank.findInstances({includeDerivedTypes: true});
-    var allEvents = studio.project.model.Event.findInstances();
-    var allSnapshots = studio.project.model.Snapshot.findInstances();
-    var allParams = studio.project.model.ParameterPreset.findInstances();
-    var allGroups = studio.project.model.MixerGroup.findInstances();
     var allReturns = studio.project.model.MixerReturn.findInstances();
 
     const getParameters = (paramPresets) => {
@@ -58,63 +58,106 @@ function exportFmodProjectData(outFilePath)
         });
     };
 
-    var banks = allBanks.map( bank => {
-        var evts = bank.events.map( evt => {
-            return {
-                name: evt.name,
-                path: evt.getPath(),
-                parameters: getParameters(evt.getParameterPresets())
-            };
-        } );
+    const getEvtData = (evt) => ({
+        type: "Event",
+        name: evt.name,
+        path: evt.getPath(),
+        parameters: getParameters(evt.getParameterPresets())
+    });
 
+    const transverseEventFolder = (evtFolder) => {
+        var items = [];
+        evtFolder.items.forEach( item => {
+            if(item.isOfType("EventFolder") || item.isOfType("MasterEventFolder"))
+            {
+                if(item.items.length > 0) {
+                    items.push({
+                        type: "Folder",
+                        name: item.name,
+                        items: transverseEventFolder(item)
+                    });
+                }
+            }
+            else if(item.isOfType("Event"))
+            {
+                items.push(getEvtData(item));
+            }
+        });
+
+        return items;
+    };
+    var events = transverseEventFolder(studio.project.workspace.masterEventFolder);
+
+    const transverseSnapshotGroup = (snapshotGrp) => {
+        var items = [];
+
+        snapshotGrp.items.forEach( child => {
+            if(child.isOfType("SnapshotList") || child.isOfType("SnapshotGroup")) {
+                if(child.items.length > 0)
+                    items.push({
+                        type: "Folder",
+                        name: child.name,
+                        items: transverseSnapshotGroup(child)
+                    });
+            }
+            else if(child.isOfType("Snapshot")) {
+                items.push({
+                    type: "Snapshot",
+                    name: child.name,
+                    path: child.getPath(),
+                    params: getParameters(child.getParameterPresets())
+                });
+            }
+        });
+
+        return items;
+    };
+    var snapshots = transverseSnapshotGroup(studio.project.workspace.mixer.snapshotList, "Snapshots");
+
+    var banks = allBanks.map( bank => {
         return {
             name: bank.name,
             isLocalized: bank.audioTable !== undefined && bank.audioTable !== null,
-            events: evts
         };
     });
 
-    var events = allEvents.map( evt => {
-        return {
-            name: evt.name,
-            path: evt.getPath(),
-            parameters: getParameters(evt.getParameterPresets())
-        };
-    });
+    const transverseParameterPresetsFolder = (PPFolder) => {
+        var paramData = [];
+        PPFolder.items.forEach( pp => {
+            if(pp.isOfType("ParameterPresetFolder")) {
+                var entry = {
+                    type: "Folder",
+                    name: pp.name,
+                    items: transverseParameterPresetsFolder(pp)
+                };
+                if(entry.items.length > 0)
+                    paramData.push(entry);
+            }
+            else if(pp.isOfType("ParameterPreset")) {
+                if(pp.parameter.isGlobal) {
+                    paramData.push({
+                        type: "Parameter",
+                        name: pp.name,
+                        path: pp.getPath(),tput: r.output?.getPath()
+                        initialValue: pp.parameter.initialValue,
+                        labels: pp.parameter.enumerationLabels,
+                        minimum: pp.parameter.minimum,
+                        maximum: pp.parameter.maximum
+                    });
+                }
+            }
+        });
 
-    var parameters = allParams.filter( pp => pp.parameter.isGlobal == true).map(pp => {
-        return {
-            name: pp.name,
-            path: pp.getPath(),
-            initialValue: pp.parameter.initialValue,
-            labels: pp.parameter.enumerationLabels,
-            minimum: pp.parameter.minimum,
-            maximum: pp.parameter.maximum
-        };
-    });
-
-    var snapshots = allSnapshots.map( ss => {
-        return {
-            name: ss.name,
-            path: ss.getPath(),
-            params: getParameters(ss.getParameterPresets())
-        }
-    });
-
-    var groups = allGroups.map( mg => ({
-        name: mg.name,
-        path: mg.getPath(),
-        output: mg.output?.getPath() //TODO: Should be name instead?
-    }));
-
-    var returns = allReturns.map( r => ({ name: r.name, path: r.getPath(), output: r.output?.getPath() }));
+        return paramData;
+    };
+    var parameters = transverseParameterPresetsFolder(studio.project.workspace.masterParameterPresetFolder);
+    var returns = allReturns.map( r => ({ name: r.name, path: r.getPath() })); //Should have the nested object structures like events, snapshots, and parameters have?
 
     var exportData = {
         banks,
         events,
         parameters,
         snapshots,
-        groups,
         returns
     };
 
