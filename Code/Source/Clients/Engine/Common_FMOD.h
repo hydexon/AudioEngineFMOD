@@ -9,22 +9,21 @@ namespace AudioEngineFMOD
 {
     namespace XMLTags
     {
-        static constexpr const char* FMODEventTag = "FMODEvent";
-        static constexpr const char* FMODSnapshot = "FMODSnapshot";
-        static constexpr const char* FMODEventParameterTag = "FMODEventParameter";
-        static constexpr const char* FMODSnapshotParameterTag = "FMODSnapshotParameter";
-        static constexpr const char* FMODStudioBankTag = "FMODBankFile";
-        static constexpr const char* FMODFileTag = "FMODAudioFile";
+        static constexpr const char* EventTag = "FMODEvent";
+        static constexpr const char* SnapshotTag = "FMODSnapshot";
+        static constexpr const char* EventParameterTag = "FMODEventParameter";
+        static constexpr const char* SnapshotParameterTag = "FMODSnapshotParameter";
+        static constexpr const char* GlobalParameterTag = "FMODGlobalParameter";
+        static constexpr const char* BankTag = "FMODBank";
+        static constexpr const char* ReturnTag = "FMODBus";
 
-        static constexpr const char* FMODPathAttribute = "Path";
-        static constexpr const char* FMODGUIDAttr = "GUID";
-        static constexpr const char* FMODLocalizedAttribute = "Localized";
-        static constexpr const char* FMODSamplePreloadAttr = "loadSampleData";
-        static constexpr const char* FMODStopMode = "StopMode";
-        static constexpr const char* FMODEvtAction = "EventAction";
-        static constexpr const char* FMODParamAttr = "Parameter";
-        static constexpr const char* FMODIsGlobalParam = "Global";
-        static constexpr const char* FMODNamedValue = "StateValue";
+        static constexpr const char* PathAttr = "path";
+        static constexpr const char* NameAttr = "name";
+        static constexpr const char* ValueAttr = "value";
+        static constexpr const char* MultAttr = "multiplier";
+        static constexpr const char* ShiftAttr = "shift";
+        static constexpr const char* EventTypeAttr = "FMODEventType";
+
     }
 
     struct FMOD_GUID_CmpEqual {
@@ -64,6 +63,7 @@ namespace AudioEngineFMOD
 
     namespace Utils
     {
+
         FMODEventType GetActionFromXmlStr(const AZStd::string_view source);
         AZStd::string GetXmlStrFromAction(const FMODEventType action);
 

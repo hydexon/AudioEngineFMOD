@@ -24,54 +24,69 @@ namespace AudioEngineFMOD
 
 TImplControlType TagToType(const AZStd::string_view tag)
 {
-#if 0
-    if(tag == XMLTags::FMODEventTag)
+    if (tag == XMLTags::EventTag)
     {
         return eFMOD_EVENT;
     }
-    else if(tag == XMLTags::FMODParameterTag)
+    else if (tag == XMLTags::EventParameterTag)
     {
-        return eFMOD_PARAMETER;
+        return eFMOD_EVENT_PARAMETER;
     }
-    else if(tag == XMLTags::FMODStudioBankTag)
+    else if (tag == XMLTags::SnapshotTag)
+    {
+        return eFMOD_SNAPSHOT;
+    }
+    else if (tag == XMLTags::SnapshotParameterTag)
+    {
+        return eFMOD_SNAPSHOT_PARAMETER;
+    }
+    else if (tag == XMLTags::GlobalParameterTag)
+    {
+        return eFMOD_GLOBAL_PARAMETER;
+    }
+    else if (tag == XMLTags::BankTag)
     {
         return eFMOD_SOUNDBANK;
     }
-#endif
+    else if (tag == XMLTags::ReturnTag)
+    {
+        return eFMOD_RETURN;
+    }
     return eFMOD_INVALID;
 }
 
-const AZStd::string_view TypeToTag(const TImplControlType type)
+AZStd::string_view TypeToTag(const TImplControlType type)
 {
-#if 0
-    switch(type)
+    switch (type)
     {
-    case eFMOD_EVENT:
-        return XMLTags::FMODEventTag;
-    case eFMOD_PARAMETER:
-        return XMLTags::FMODParameterTag;
-    case eFMOD_SOUNDBANK:
-        return XMLTags::FMODStudioBankTag;
-    default:
-        break;
+    case eFMOD_EVENT: return XMLTags::EventTag;
+    case eFMOD_EVENT_PARAMETER: return XMLTags::EventParameterTag;
+    case eFMOD_SNAPSHOT: return XMLTags::SnapshotTag;
+    case eFMOD_SNAPSHOT_PARAMETER: return XMLTags::SnapshotParameterTag;
+    case eFMOD_GLOBAL_PARAMETER: return XMLTags::GlobalParameterTag;
+    case eFMOD_SOUNDBANK: return XMLTags::BankTag;
+    case eFMOD_RETURN: return XMLTags::ReturnTag;
+    default: return "";
     }
-#endif
+
     return "";
+}
+
+AZStd::string_view StripPrefixFromPath(AZStd::string_view ogPath)
+{
+    auto pos = ogPath.find(":");
+    return (pos != std::string_view::npos) ? ogPath.substr(pos + 1) : ogPath;
 }
 
 
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
-    : QObject()
-    , m_banksControl("Banks", ACE_INVALID_CID, eFMOD_GROUPCTRL)
+    : m_banksControl("Banks", ACE_INVALID_CID, eFMOD_GROUPCTRL)
     , m_eventsControl("Events", ACE_INVALID_CID, eFMOD_GROUPCTRL)
     , m_snapshotsCtrl("Snapshots", ACE_INVALID_CID, eFMOD_GROUPCTRL)
     , m_globalParamsCtrl("Global Parameters", ACE_INVALID_CID, eFMOD_GROUPCTRL)
     , m_returnsControl("Returns", ACE_INVALID_CID, eFMOD_GROUPCTRL)
 {
     InitFMODResources();
-
-    m_localizedParentControl.SetParent(&m_rootControl);
-    m_rootControl.AddChild(&m_localizedParentControl);
 
     m_banksControl.SetParent(&m_rootControl);
     m_rootControl.AddChild(&m_banksControl);
@@ -147,7 +162,7 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::GetControl(AudioCon
 {
     if (id != ACE_INVALID_CID)
     {
-        if (auto it = m_controls.find(id); it != m_controls.end())
+        if (const auto it = m_controls.find(id); it != m_controls.end())
         {
             return it->second.get();
         }
@@ -187,7 +202,6 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     case AudioControls::eACET_RTPC:
     case AudioControls::eACET_SWITCH_STATE:
         return eFMOD_EVENT_PARAMETER | eFMOD_SNAPSHOT_PARAMETER | eFMOD_GLOBAL_PARAMETER;
-    case AudioControls::eACET_SWITCH:
     case AudioControls::eACET_ENVIRONMENT:
         return eFMOD_RETURN;
     default:
@@ -197,7 +211,34 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl)
 {
-    return nullptr;
+    if (!middlewareControl)
+        return nullptr;
+
+    TConnectionPtr connection;
+    middlewareControl->SetConnected(true);
+    ++m_connectionsByID[middlewareControl->GetId()];
+
+    switch (middlewareControl->GetType())
+    {
+    case eFMOD_SNAPSHOT_PARAMETER:
+    case eFMOD_GLOBAL_PARAMETER:
+    case eFMOD_EVENT_PARAMETER:
+        {
+            if (atlControlType == eACET_RTPC)
+            {
+                return AZStd::make_shared<FMODParamRtpcConnection>(middlewareControl->GetId());
+            }
+            else if (atlControlType == eACET_SWITCH_STATE)
+            {
+                return AZStd::make_shared<FMODParamToStateConnection>(middlewareControl->GetId());
+            }
+            break;
+        }
+    default:
+        return AZStd::make_shared<AudioControls::IAudioConnection>(middlewareControl->GetId());
+    }
+
+    return AZStd::make_shared<AudioControls::IAudioConnection>(middlewareControl->GetId()); //I wonder why.
 }
 
 AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, [[maybe_unused]]AudioControls::EACEControlType atlControlType)
@@ -207,12 +248,36 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     {
         return nullptr;
     }
+
+    auto type = TagToType(node->value());
+    if (type != eFMOD_INVALID)
+    {
+        auto nameAttr = node->first_attribute(XMLTags::NameAttr);
+        auto pathAttr = node->first_attribute(XMLTags::PathAttr);
+
+
+    }
+
     return nullptr;
 }
 
 AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
 {
     return nullptr;
+}
+
+void CAudioSystemEditor_FMOD::ConnectionRemoved(AudioControls::IAudioSystemControl* middlewareControl)
+{
+    if (!middlewareControl)
+        return;
+
+    int connectionCount = m_connectionsByID[middlewareControl->GetId()] - 1;
+    if (connectionCount <= 0)
+    {
+        connectionCount = 0;
+        middlewareControl->SetConnected(false);
+    }
+    m_connectionsByID[middlewareControl->GetId()] = connectionCount;
 }
 
 const AZStd::string_view CAudioSystemEditor_FMOD::GetTypeIcon(AudioControls::TImplControlType type) const
@@ -296,5 +361,37 @@ IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string nam
     return GetControl(Audio::AudioStringToID<CID>(name.data()));
 }
 
+AudioControls::IAudioSystemControl* CAudioSystemEditor_FMOD::CreatePlaceholderFolderPath(const AZStd::string& path,
+    AudioControls::TImplControlType type)
+{
+    IAudioSystemControl* pCtrl = nullptr;
+    switch (type)
+    {
+    case eFMOD_EVENT:
+        pCtrl = &m_eventsControl;
+        break;
+    case eFMOD_SNAPSHOT:
+        pCtrl = &m_snapshotsCtrl;
+        break;
+    case eFMOD_GLOBAL_PARAMETER:
+        pCtrl = &m_globalParamsCtrl;
+        break;
+    case eFMOD_SOUNDBANK:
+        pCtrl = &m_banksControl;
+        break;
+    case eFMOD_RETURN:
+        pCtrl = &m_returnsControl;
+        break;
+    default:
+        pCtrl = &m_rootControl;
+        break;
+    }
+
+    const auto cleanPath = StripPrefixFromPath(path);
+    AZStd::vector<AZStd::string> tokens;
+    AZ::StringFunc::Tokenize(cleanPath, tokens, '/');
+
+    return pCtrl;
+}
 
 }

@@ -12,10 +12,8 @@
 namespace AudioEngineFMOD
 {
     class CAudioSystemEditor_FMOD
-            : public QObject
-            , public AudioControls::IAudioSystemEditor
+        : public AudioControls::IAudioSystemEditor
     {
-        Q_OBJECT
 
     public:
         CAudioSystemEditor_FMOD();
@@ -31,6 +29,7 @@ namespace AudioEngineFMOD
         AudioControls::TConnectionPtr CreateConnectionToControl(AudioControls::EACEControlType atlControlType, AudioControls::IAudioSystemControl *middlewareControl) override;
         AudioControls::TConnectionPtr CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType) override;
         AZ::rapidxml::xml_node<char> *CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType) override;
+        void ConnectionRemoved(AudioControls::IAudioSystemControl* middlewareControl) override;
         const AZStd::string_view GetTypeIcon(AudioControls::TImplControlType type) const override;
         const AZStd::string_view GetTypeIconSelected(AudioControls::TImplControlType type) const override;
         AZStd::string GetName() const override;
@@ -41,6 +40,7 @@ namespace AudioEngineFMOD
     private:
         friend class CAudioFMODDataLoader;
         AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;
+        AudioControls::IAudioSystemControl* CreatePlaceholderFolderPath(const AZStd::string& path, AudioControls::TImplControlType type);
 
         using TControlPtr = AZStd::shared_ptr<AudioControls::IAudioSystemControl>;
         using TControlMap = AZStd::unordered_map<AudioControls::CID, TControlPtr>;
@@ -50,7 +50,6 @@ namespace AudioEngineFMOD
         TConnectionsMap m_connectionsByID;
 
         AudioControls::IAudioSystemControl m_rootControl;
-        AudioControls::IAudioSystemControl m_localizedParentControl;
         AudioControls::IAudioSystemControl m_banksControl, m_eventsControl, m_snapshotsCtrl, m_globalParamsCtrl, m_returnsControl;
 
         AZStd::string m_currentLanguageName;

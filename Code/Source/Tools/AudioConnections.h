@@ -6,55 +6,37 @@
 
 namespace AudioEngineFMOD
 {
-    class CFMODBankConnection : public AudioControls::IAudioConnection
+    class FMODParamRtpcConnection : public AudioControls::IAudioConnection
     {
     public:
-        explicit CFMODBankConnection(AudioControls::CID id)
-            : AudioControls::IAudioConnection(id)
-            , m_loadSampleData(false)
-        {
-        }
-
-        ~CFMODBankConnection() = default;
-
-        bool HasProperties() override { return true; }
-        bool m_loadSampleData;
-    };
-
-    class CFMODEventConnection : public AudioControls::IAudioConnection
-    {
-    public:
-        explicit CFMODEventConnection(AudioControls::CID id)
-            : AudioControls::IAudioConnection(id)
-            , m_loadSampleData(false)
-            , m_stopMode(FMOD_STUDIO_STOP_ALLOWFADEOUT)
-            , m_action(FMODEventType::Play)
-        {
-        }
-
-        ~CFMODEventConnection() = default;
-        bool HasProperties() override { return true; }
-
-        bool m_isSnapshot;
-        FMODEventType m_action;
-        bool m_loadSampleData;
-        FMOD_STUDIO_STOP_MODE m_stopMode;
-
-        //TODO: Enum here to Play or Stop Event.
-        //      If Stop Event also show how it should stop.
-    };
-
-    class CStateToFMODParam : public AudioControls::IAudioConnection
-    {
-    public:
-        explicit CStateToFMODParam(AudioControls::CID id)
-            : AudioControls::IAudioConnection(id)
+        explicit FMODParamRtpcConnection(AudioControls::CID id)
+            : IAudioConnection(id)
+            , m_mult(1.0f)
+            , m_shift(0.0f)
         {}
+        bool HasProperties() override
+        {
+            return true;
+        }
 
-        ~CStateToFMODParam() override = default;
-
-        bool HasProperties() override { return true; }
-
-        AZStd::string m_namedValue;
+        float m_mult;
+        float m_shift;
     };
+
+    class FMODParamToStateConnection : public AudioControls::IAudioConnection
+    {
+    public:
+        explicit FMODParamToStateConnection(AudioControls::CID id)
+            : IAudioConnection(id)
+            , m_value(1.0f)
+        {};
+
+        bool HasProperties() override
+        {
+            return true;
+        }
+
+        float m_value;
+    };
+
 }
