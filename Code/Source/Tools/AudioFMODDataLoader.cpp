@@ -18,7 +18,6 @@ namespace AudioEngineFMOD
 
     void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD* audioSystemImpl)
     {
-        AZ_Info("AudioSystemEditor_FMOD", "Loading FMODProjectInfo.json data for controls");
         m_audioEditorImpl = audioSystemImpl;
         m_path = AZ::IO::FixedMaxPath { m_audioEditorImpl->GetDataPath() / "FMODProjectInfo.json"};
 
@@ -41,8 +40,8 @@ namespace AudioEngineFMOD
 
         if(doc.IsObject())
         {
-            AZ_Info("AudioSystemEditor_FMOD", "Processing JSON!");
             const auto& root = doc.GetObject();
+            LoadSimpleItems(root["banks"], &m_audioEditorImpl->m_banksControl, eFMOD_SOUNDBANK);
             LoadItems(root["events"], &m_audioEditorImpl->m_eventsControl, eFMOD_EVENT);
             LoadItems(root["snapshots"], &m_audioEditorImpl->m_snapshotsCtrl, eFMOD_SNAPSHOT);
             LoadItems(root["parameters"], &m_audioEditorImpl->m_globalParamsCtrl, eFMOD_GLOBAL_PARAMETER);
@@ -89,7 +88,8 @@ namespace AudioEngineFMOD
         for (const auto& item : value.GetArray())
         {
             const auto& obj = item.GetObject();
-            auto ctrldef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parent, obj["path"].GetString());
+            bool isLocalized = obj.HasMember("isLocalized") ? obj["isLocalized"].GetBool() : false;
+            auto ctrldef = AudioControls::SControlDef(obj["name"].GetString(), itemType, isLocalized, parent, obj.HasMember("path") ? obj["path"].GetString() : "");
             m_audioEditorImpl->CreateControl(ctrldef);
         }
     }

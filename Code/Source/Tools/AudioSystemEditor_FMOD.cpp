@@ -185,10 +185,9 @@ AudioControls::TImplControlTypeMask CAudioSystemEditor_FMOD::GetCompatibleTypes(
     case AudioControls::eACET_TRIGGER:
         return eFMOD_EVENT | eFMOD_SNAPSHOT;
     case AudioControls::eACET_RTPC:
-        return eFMOD_EVENT_PARAMETER | eFMOD_SNAPSHOT_PARAMETER | eFMOD_GLOBAL_PARAMETER;
-    case AudioControls::eACET_SWITCH:
     case AudioControls::eACET_SWITCH_STATE:
         return eFMOD_EVENT_PARAMETER | eFMOD_SNAPSHOT_PARAMETER | eFMOD_GLOBAL_PARAMETER;
+    case AudioControls::eACET_SWITCH:
     case AudioControls::eACET_ENVIRONMENT:
         return eFMOD_RETURN;
     default:
