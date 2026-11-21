@@ -158,6 +158,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../EditorFMODIcons.qrc"/>
+ </resources>
  <connections/>
 </ui>

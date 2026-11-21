@@ -1,6 +1,5 @@
 #include "AudioFMODDataLoader.h"
 
-#include <AudioFileUtils.h>
 #include "AudioSystemEditor_FMOD.h"
 //#include "AudioSystemCtrl_FMOD.h"
 #include <AzCore/StringFunc/StringFunc.h>
@@ -19,6 +18,7 @@ namespace AudioEngineFMOD
 
     void CAudioFMODDataLoader::Load(CAudioSystemEditor_FMOD* audioSystemImpl)
     {
+        AZ_Info("AudioSystemEditor_FMOD", "Loading FMODProjectInfo.json data for controls");
         m_audioEditorImpl = audioSystemImpl;
         m_path = AZ::IO::FixedMaxPath { m_audioEditorImpl->GetDataPath() / "FMODProjectInfo.json"};
 
@@ -41,29 +41,56 @@ namespace AudioEngineFMOD
 
         if(doc.IsObject())
         {
+            AZ_Info("AudioSystemEditor_FMOD", "Processing JSON!");
             const auto& root = doc.GetObject();
-            AZ_UNUSED(root);
+            LoadItems(root["events"], &m_audioEditorImpl->m_eventsControl, eFMOD_EVENT);
+            LoadItems(root["snapshots"], &m_audioEditorImpl->m_snapshotsCtrl, eFMOD_SNAPSHOT);
+            LoadItems(root["parameters"], &m_audioEditorImpl->m_globalParamsCtrl, eFMOD_GLOBAL_PARAMETER);
+            LoadSimpleItems(root["returns"], &m_audioEditorImpl->m_returnsControl, eFMOD_RETURN);
         }
     }
 
-    void CAudioFMODDataLoader::LoadBanks(rapidjson_ly::Value &value)
+    void CAudioFMODDataLoader::LoadItems(rapidjson::Value& value, AudioControls::IAudioSystemControl* parentCtrl,
+        EFMODStudioControlTypes itemType)
     {
-        if(!value.IsArray())
-            return;
-    }
-
-    void CAudioFMODDataLoader::LoadEvents(rapidjson::Value &value)
-    {
-        if(!value.IsArray())
+        if (!value.IsArray())
             return;
 
+        for (auto& item : value.GetArray())
+        {
+            const auto& obj = item.GetObject();
+
+            if (const auto jtype = obj["type"].GetString(); AZ::StringFunc::Equal(jtype, "Folder"))
+            {
+                AZ_Info("AudioSystemEditor_FMOD", "Iterating Folder: '%s'", obj["name"].GetString());
+                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), eFMOD_FOLDER, false, parentCtrl);
+                auto folderCtrl = m_audioEditorImpl->CreateControl(ctrlDef);
+                LoadItems(obj["items"], folderCtrl, itemType);
+            }
+            else
+            {
+                AZ_Info("AudioSystemEditor_FMOD", "Iterating Control: '%s'", obj["path"].GetString());
+                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parentCtrl, obj["path"].GetString());
+                auto itemCtrl = m_audioEditorImpl->CreateControl(ctrlDef);
+                if (itemType == eFMOD_EVENT || itemType == eFMOD_SNAPSHOT)
+                {
+                    LoadSimpleItems(obj["parameters"], itemCtrl, itemType == eFMOD_EVENT ? eFMOD_EVENT_PARAMETER : eFMOD_SNAPSHOT_PARAMETER);
+                }
+            }
+        }
     }
 
-    void CAudioFMODDataLoader::LoadSnapshots(rapidjson::Value &value)
+    void CAudioFMODDataLoader::LoadSimpleItems(rapidjson::Value& value,
+        AudioControls::IAudioSystemControl* parent, EFMODStudioControlTypes itemType)
     {
-        if(!value.IsArray())
+        if (!value.IsArray())
             return;
 
+        for (const auto& item : value.GetArray())
+        {
+            const auto& obj = item.GetObject();
+            auto ctrldef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parent, obj["path"].GetString());
+            m_audioEditorImpl->CreateControl(ctrldef);
+        }
     }
-
 }

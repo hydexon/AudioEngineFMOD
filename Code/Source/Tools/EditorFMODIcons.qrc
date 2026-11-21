@@ -1,12 +1,14 @@
 <RCC>
-    <qresource prefix="/Editor">
-        <file>EditorFMODIcons/switch.png</file>
-        <file>EditorFMODIcons/state.png</file>
-        <file>EditorFMODIcons/soundbank.png</file>
-        <file>EditorFMODIcons/hammer.png</file>
-        <file>EditorFMODIcons/events.png</file>
-        <file>EditorFMODIcons/bus.png</file>
-        <file>EditorFMODIcons/snapshot.png</file>
-        <file>EditorFMODIcons/invalid.png</file>
-    </qresource>
+  <qresource prefix="/">
+    <file>AEFMODIcons/bank.png</file>
+    <file>AEFMODIcons/event.png</file>
+    <file>AEFMODIcons/folder_closed.png</file>
+    <file>AEFMODIcons/folder_open.png</file>
+    <file>AEFMODIcons/folder-horizontal-open.png</file>
+    <file>AEFMODIcons/folder-horizontal.png</file>
+    <file>AEFMODIcons/group.png</file>
+    <file>AEFMODIcons/return.png</file>
+    <file>AEFMODIcons/snapshot.png</file>
+    <file>AEFMODIcons/tag_icon.png</file>
+  </qresource>
 </RCC>

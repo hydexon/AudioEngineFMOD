@@ -138,7 +138,7 @@ function exportFmodProjectData(outFilePath) {
                     paramData.push({
                         type: "Parameter",
                         name: pp.name,
-                        path: pp.getPath(),tput: r.output?.getPath()
+                        path: pp.getPath(),
                         initialValue: pp.parameter.initialValue,
                         labels: pp.parameter.enumerationLabels,
                         minimum: pp.parameter.minimum,

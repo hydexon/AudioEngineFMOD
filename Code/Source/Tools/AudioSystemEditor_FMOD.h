@@ -39,6 +39,7 @@ namespace AudioEngineFMOD
         QWidget* CreateConnectionPropertiesWidget(const AudioControls::TConnectionPtr connection, AudioControls::EACEControlType atlControlType) override;
 
     private:
+        friend class CAudioFMODDataLoader;
         AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;
 
         using TControlPtr = AZStd::shared_ptr<AudioControls::IAudioSystemControl>;
@@ -50,6 +51,7 @@ namespace AudioEngineFMOD
 
         AudioControls::IAudioSystemControl m_rootControl;
         AudioControls::IAudioSystemControl m_localizedParentControl;
+        AudioControls::IAudioSystemControl m_banksControl, m_eventsControl, m_snapshotsCtrl, m_globalParamsCtrl, m_returnsControl;
 
         AZStd::string m_currentLanguageName;
         CAudioFMODDataLoader m_loader;

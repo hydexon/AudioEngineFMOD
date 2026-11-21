@@ -8,7 +8,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/JSON/document.h>
 
-//#include "AudioSystemCtrl_FMOD.h"
+#include "AudioSystemCtrl_FMOD.h"
 
 
 namespace AudioControls
@@ -33,8 +33,9 @@ namespace AudioEngineFMOD
         CAudioSystemEditor_FMOD* m_audioEditorImpl = nullptr;
         AZ::IO::FixedMaxPath m_path;
 
-        void LoadBanks(rapidjson::Value& value);
-        void LoadEvents(rapidjson::Value& value);
-        void LoadSnapshots(rapidjson::Value& value);
+        void LoadItems(rapidjson::Value& value, AudioControls::IAudioSystemControl* parentCtrl, EFMODStudioControlTypes itemType);
+        void LoadSimpleItems(rapidjson::Value& value, AudioControls::IAudioSystemControl* parent, EFMODStudioControlTypes itemType);
+
+
     };
 }

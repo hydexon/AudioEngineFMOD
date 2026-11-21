@@ -16,12 +16,6 @@ void SetComboboxIndexFromAction(FMODEventType action, QComboBox* cb)
     case FMODEventType::Play:
         cb->setCurrentIndex(0);
         break;
-    case FMODEventType::Pause:
-        cb->setCurrentIndex(1);
-        break;
-    case FMODEventType::Resume:
-        cb->setCurrentIndex(2);
-        break;
     case FMODEventType::Stop:
         cb->setCurrentIndex(3);
         break;
@@ -32,14 +26,7 @@ void SetComboboxIndexFromAction(FMODEventType action, QComboBox* cb)
 
 FMODEventType GetEventActionFromComboBox(QComboBox* cb)
 {
-    switch(cb->currentIndex())
-    {
-    case 0: return FMODEventType::Play;
-    case 1: return FMODEventType::Pause;
-    case 2: return FMODEventType::Resume;
-    case 3: return FMODEventType::Stop;
-    default: return FMODEventType::Unknown;
-    }
+    return FMODEventType::Play;
 }
 
 EventPropertiesForm::EventPropertiesForm(AudioControls::TConnectionPtr connection, AudioControls::TImplControlType ctrlType, QWidget *parent) :

@@ -6,6 +6,8 @@
 
 #include <AudioAllocators.h>
 #include <IAudioSystemEditor.h>
+
+#include <memory>
 #include "AudioSystemEditor_FMOD.h"
 
 namespace AudioEngineFMOD
@@ -53,7 +55,7 @@ namespace AudioEngineFMOD
 
     void AudioEngineFMODEditorSystemComponent::InitializeEditorImplPlugin()
     {
-        m_editorImplPlugin.reset(new CAudioSystemEditor_FMOD());
+        m_editorImplPlugin = std::make_unique<CAudioSystemEditor_FMOD>();
     }
 
     void AudioEngineFMODEditorSystemComponent::ReleaseEditorImplPlugin()
