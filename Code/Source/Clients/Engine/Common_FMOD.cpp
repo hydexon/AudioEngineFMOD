@@ -33,7 +33,7 @@ namespace AudioEngineFMOD
 
     FMODEventType GetActionFromXmlStr(const AZStd::string_view source)
     {
-        FMODEventType result = FMODEventType::None;
+        FMODEventType result = FMODEventType::Play;
 
         if(AZ::StringFunc::Equal(source, "play"))        result = FMODEventType::Play;
         else if(AZ::StringFunc::Equal(source, "stop"))   result = FMODEventType::Stop;
@@ -45,7 +45,6 @@ namespace AudioEngineFMOD
     {
         switch(action)
         {
-
         case FMODEventType::Play:     return "play";
         case FMODEventType::Stop:     return "stop";
         default:                        return "none";

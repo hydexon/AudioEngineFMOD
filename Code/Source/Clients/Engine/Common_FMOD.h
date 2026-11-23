@@ -19,10 +19,12 @@ namespace AudioEngineFMOD
 
         static constexpr const char* PathAttr = "path";
         static constexpr const char* NameAttr = "name";
+        static constexpr const char* TargetAttr = "target";
+        static constexpr const char* LocalizedAttr = "localized";
         static constexpr const char* ValueAttr = "value";
         static constexpr const char* MultAttr = "multiplier";
         static constexpr const char* ShiftAttr = "shift";
-        static constexpr const char* EventTypeAttr = "FMODEventType";
+        static constexpr const char* EventTypeAttr = "eventType";
 
     }
 
@@ -56,7 +58,6 @@ namespace AudioEngineFMOD
 
 
     enum class FMODEventType {
-        None,
         Play,
         Stop
     };

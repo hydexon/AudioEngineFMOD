@@ -6,6 +6,22 @@
 
 namespace AudioEngineFMOD
 {
+    class FMODEventConnection : public AudioControls::IAudioConnection
+    {
+    public:
+        explicit FMODEventConnection(AudioControls::CID id)
+            : IAudioConnection(id)
+            , m_eventType(FMODEventType::Play)
+        {}
+
+        bool HasProperties() override
+        {
+            return true;
+        }
+
+        FMODEventType m_eventType;
+    };
+    
     class FMODParamRtpcConnection : public AudioControls::IAudioConnection
     {
     public:
@@ -38,5 +54,6 @@ namespace AudioEngineFMOD
 
         float m_value;
     };
+
 
 }

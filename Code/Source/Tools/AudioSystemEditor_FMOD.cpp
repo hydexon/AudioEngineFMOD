@@ -68,8 +68,6 @@ AZStd::string_view TypeToTag(const TImplControlType type)
     case eFMOD_RETURN: return XMLTags::ReturnTag;
     default: return "";
     }
-
-    return "";
 }
 
 AZStd::string_view StripPrefixFromPath(AZStd::string_view ogPath)
@@ -77,7 +75,6 @@ AZStd::string_view StripPrefixFromPath(AZStd::string_view ogPath)
     auto pos = ogPath.find(":");
     return (pos != std::string_view::npos) ? ogPath.substr(pos + 1) : ogPath;
 }
-
 
 CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
     : m_banksControl("Banks", ACE_INVALID_CID, eFMOD_GROUPCTRL)
@@ -103,12 +100,29 @@ CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
     m_returnsControl.SetParent(&m_rootControl);
     m_rootControl.AddChild(&m_returnsControl);
 
-    m_loader.Load(this);
+
 }
 
 void CAudioSystemEditor_FMOD::Reload()
 {
+    for (const auto& idControlPair : m_controls)
+    {
+        auto control = idControlPair.second;
+        if (control)
+        {
+            control->SetPlaceholder(true);
+        }
+    }
+
+    m_fmodControlPaths.clear();
     m_loader.Load(this);
+    m_connectionsByID.clear();
+    UpdateConnectedStatus();
+
+    for (const auto& pathPairs : m_fmodControlPaths)
+    {
+        AZ_Info("AudioSystemEditorFMOD","ControlId: %d, Path: %s", pathPairs.first, pathPairs.second.c_str() );
+    }
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const AudioControls::SControlDef &controlDefinition)
@@ -124,6 +138,7 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
     {
         AZ::StringFunc::Path::Join(controlDefinition.m_path.c_str(), fullName.c_str(), fullName);
     }
+
     CID id = Audio::AudioStringToID<CID>(fullName.c_str());
     if (AudioControls::IAudioSystemControl* control = GetControl(id))
     {
@@ -149,6 +164,8 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
         newControl->SetParent(parent);
         newControl->SetLocalized(controlDefinition.m_isLocalized);
         m_controls[id] = newControl;
+        m_fmodControlPaths[id] = controlDefinition.m_path;
+        AZ_Info("AudioSystemEditor_FMOD", "Creating Control '%s'(%d) with Path: %s", controlDefinition.m_name.c_str(), id, controlDefinition.m_path.c_str());
         return newControl.get();
     }
 }
@@ -248,22 +265,171 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
     {
         return nullptr;
     }
+    TImplControlType type = TagToType(node->name());
+    if (type == eFMOD_INVALID)
+        return nullptr;
 
-    auto type = TagToType(node->value());
-    if (type != eFMOD_INVALID)
+    IAudioSystemControl* control = nullptr;
+    //Sound banks and Returns don't need get the controls by their path, so we process them first.
+    if (type == eFMOD_SOUNDBANK || type == eFMOD_RETURN )
     {
-        auto nameAttr = node->first_attribute(XMLTags::NameAttr);
-        auto pathAttr = node->first_attribute(XMLTags::PathAttr);
+        auto parentControl = type == eFMOD_SOUNDBANK ? &m_banksControl : &m_returnsControl;
+        bool isLocalized = false;
+        if (type == eFMOD_SOUNDBANK)
+        {
+            auto localizedAttr = node->first_attribute(XMLTags::LocalizedAttr);
+            if (localizedAttr)
+            {
+                isLocalized = AZ::StringFunc::ToBool(localizedAttr->value());
+            }
+        }
 
+        auto nameAttr = node->first_attribute(XMLTags::NameAttr);
+        if (nameAttr && nameAttr->value()[0] != '\0')
+        {
+            auto name = nameAttr->value();
+            control = GetControlByName(name, isLocalized, parentControl);
+
+            if (!control)
+            {
+                control = CreateControl(SControlDef(name, type, isLocalized, parentControl));
+                if (control)
+                {
+                    control->SetPlaceholder(true);
+                }
+            }
+        }
+    }
+    else
+    {
+        //We look for our control by path.
+        if (auto pathAttr = node->first_attribute(XMLTags::PathAttr))
+        {
+            AZStd::string path = pathAttr->value();
+            control = GetControlByPath(path, type);
+
+            if (!control || control->GetType() != type)
+            {
+                //I'm not fully convinced of this part.
+                AZStd::string name = "";
+                AZStd::string parentPath = path;
+                auto pos = path.find_last_of("/");
+                if (pos != decltype(path)::npos)
+                {
+                    name = path.substr(pos + 1);
+                    parentPath = (pos == 0) ? "/" : path.substr(0, pos);
+                }
+                control = CreateControl(SControlDef(name, type, false, CreatePlaceholderFolderPath(parentPath, type), path));
+                if (control)
+                {
+                    control->SetPlaceholder(true);
+                }
+            }
+        }
+    }
+
+    switch (type)
+    {
+    case eFMOD_EVENT:
+        {
+
+        }
+    break;
+    case eFMOD_SNAPSHOT:
+        {
+
+        }
+    break;
+    case eFMOD_SNAPSHOT_PARAMETER:
+    case eFMOD_GLOBAL_PARAMETER:
+    case eFMOD_EVENT_PARAMETER:
+        {
+
+        }
+    break;
 
     }
+
+
 
     return nullptr;
 }
 
 AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnection(const AudioControls::TConnectionPtr connection, const AudioControls::EACEControlType atlControlType)
 {
-    return nullptr;
+    auto control = GetControl(connection->GetID());
+    if (!control)
+        return nullptr;
+
+    XmlAllocator& xmlAlloc(AudioControls::s_xmlAllocator);
+    auto pNode = xmlAlloc.allocate_node(AZ::rapidxml::node_element, xmlAlloc.allocate_string(TypeToTag((control->GetType())).data()));
+
+    switch (control->GetType())
+    {
+    case eFMOD_EVENT:
+    case eFMOD_SNAPSHOT:
+        {
+            auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::PathAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetId()].c_str()));
+            pNode->append_attribute(pathAttr);
+            auto conn = static_cast<const FMODEventConnection*>(connection.get());
+            if (conn->m_eventType == FMODEventType::Stop)
+            {
+                auto eventTypeAttr = xmlAlloc.allocate_attribute(XMLTags::EventTypeAttr, xmlAlloc.allocate_string("stop"));
+                pNode->append_attribute(eventTypeAttr);
+            }
+        }
+    break;
+    case eFMOD_RETURN:
+        {
+            auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::PathAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetId()].c_str()));
+            pNode->append_attribute(pathAttr);
+        }
+    break;
+    case eFMOD_EVENT_PARAMETER:
+    case eFMOD_GLOBAL_PARAMETER:
+    case eFMOD_SNAPSHOT_PARAMETER:
+        {
+            auto nameAttr = xmlAlloc.allocate_attribute(XMLTags::NameAttr, xmlAlloc.allocate_string(control->GetName().c_str()));
+            pNode->append_attribute(nameAttr);
+
+            auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::PathAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetId()].c_str()));
+            pNode->append_attribute(pathAttr);
+
+            if (control->GetType() == eFMOD_EVENT_PARAMETER || control->GetType() == eFMOD_SNAPSHOT_PARAMETER)
+            {
+                const auto targetAttr = xmlAlloc.allocate_attribute(XMLTags::TargetAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetParent()->GetId()].c_str()));
+                pNode->append_attribute(targetAttr);
+            }
+
+            if (atlControlType == eACET_RTPC)
+            {
+                auto conn = static_cast<const FMODParamRtpcConnection*>(connection.get());
+                auto multAttr = xmlAlloc.allocate_attribute(XMLTags::MultAttr, xmlAlloc.allocate_string(AZStd::to_string(conn->m_mult).c_str()));
+                auto shiftAttr = xmlAlloc.allocate_attribute(XMLTags::ShiftAttr, xmlAlloc.allocate_string(AZStd::to_string(conn->m_shift).c_str()));
+                pNode->append_attribute(multAttr);
+                pNode->append_attribute(shiftAttr);
+            }
+            else if (atlControlType == eACET_SWITCH_STATE)
+            {
+                auto conn = static_cast<const FMODParamToStateConnection*>(connection.get());
+                auto valueAttr = xmlAlloc.allocate_attribute(XMLTags::ValueAttr, xmlAlloc.allocate_string(AZStd::to_string(conn->m_value).c_str()));
+                pNode->append_attribute(valueAttr);
+            }
+        }
+    break;
+    case eFMOD_SOUNDBANK:
+        {
+            auto nameAttr = xmlAlloc.allocate_attribute(XMLTags::NameAttr, xmlAlloc.allocate_string(control->GetName().c_str()));
+            pNode->append_attribute(nameAttr);
+
+            auto locallizedAttr = xmlAlloc.allocate_attribute(XMLTags::LocalizedAttr, xmlAlloc.allocate_string(AZStd::to_string(control->IsLocalized()).c_str()));
+            pNode->append_attribute(locallizedAttr);
+        }
+    break;
+    default: break;
+    }
+
+    return pNode;
 }
 
 void CAudioSystemEditor_FMOD::ConnectionRemoved(AudioControls::IAudioSystemControl* middlewareControl)
@@ -348,7 +514,7 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const
 {
-    if (parent) //This is definitively used for the Switch Groups.
+    if (parent) //Used likely by the Return and Soundbank controls.
     {
         AZ::StringFunc::Path::Join(parent->GetName().c_str(), name.c_str(), name);
     }
@@ -361,37 +527,108 @@ IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string nam
     return GetControl(Audio::AudioStringToID<CID>(name.data()));
 }
 
-AudioControls::IAudioSystemControl* CAudioSystemEditor_FMOD::CreatePlaceholderFolderPath(const AZStd::string& path,
-    AudioControls::TImplControlType type)
+IAudioSystemControl* CAudioSystemEditor_FMOD::GetControlByPath(const AZStd::string& name,
+                                                                     AudioControls::TImplControlType type)
 {
-    IAudioSystemControl* pCtrl = nullptr;
-    switch (type)
+    IAudioSystemControl* pCtrl = GetRootControlForType(type);
+    auto cleanName = StripPrefixFromPath(name);
+    AZStd::vector<AZStd::string> tokens;
+    AZ::StringFunc::Tokenize(cleanName, tokens, '/');
+
+    for (const auto& token : tokens)
     {
-    case eFMOD_EVENT:
-        pCtrl = &m_eventsControl;
-        break;
-    case eFMOD_SNAPSHOT:
-        pCtrl = &m_snapshotsCtrl;
-        break;
-    case eFMOD_GLOBAL_PARAMETER:
-        pCtrl = &m_globalParamsCtrl;
-        break;
-    case eFMOD_SOUNDBANK:
-        pCtrl = &m_banksControl;
-        break;
-    case eFMOD_RETURN:
-        pCtrl = &m_returnsControl;
-        break;
-    default:
-        pCtrl = &m_rootControl;
-        break;
+        IAudioSystemControl* child = nullptr;
+        for (size_t i = 0; i < pCtrl->ChildCount(); ++i)
+        {
+            auto nextChild = pCtrl->GetChildAt(i);
+            if (nextChild && nextChild->GetName() == token)
+            {
+                child = nextChild;
+                break;
+            }
+        }
+        if (child == nullptr)
+            return nullptr;
+
+        pCtrl = child;
+    }
+    return pCtrl;
+}
+AudioControls::IAudioSystemControl* CAudioSystemEditor_FMOD::CreatePlaceholderFolderPath(const AZStd::string& path,
+                                                                                         AudioControls::TImplControlType type)
+{
+    IAudioSystemControl* pCtrl = GetRootControlForType(type);
+    const auto cleanPath = StripPrefixFromPath(path);
+    if (cleanPath.empty())
+    {
+        return pCtrl;
     }
 
-    const auto cleanPath = StripPrefixFromPath(path);
     AZStd::vector<AZStd::string> tokens;
     AZ::StringFunc::Tokenize(cleanPath, tokens, '/');
+
+    for (const auto& token : tokens)
+    {
+        IAudioSystemControl* foundChild = nullptr;
+        for (size_t i = 0; i < pCtrl->ChildCount(); ++i)
+        {
+            if (IAudioSystemControl* child = pCtrl->GetChildAt(i); child && child->GetName() == token)
+            {
+                foundChild =child;
+                break;
+            }
+        }
+        if (!foundChild)
+        {
+            foundChild = CreateControl(SControlDef(token, eFMOD_FOLDER, false, pCtrl));
+            foundChild->SetPlaceholder(true);
+        }
+        pCtrl = foundChild;
+    }
 
     return pCtrl;
 }
 
+AudioControls::IAudioSystemControl* CAudioSystemEditor_FMOD::GetRootControlForType(const AudioControls::TImplControlType type)
+{
+    IAudioSystemControl* pRoot = nullptr;
+    switch (type)
+    {
+    case eFMOD_EVENT:
+        pRoot = &m_eventsControl;
+        break;
+    case eFMOD_SNAPSHOT:
+        pRoot = &m_snapshotsCtrl;
+        break;
+    case eFMOD_GLOBAL_PARAMETER:
+        pRoot = &m_globalParamsCtrl;
+        break;
+    case eFMOD_SOUNDBANK:
+        pRoot = &m_banksControl;
+        break;
+    case eFMOD_RETURN:
+        pRoot = &m_returnsControl;
+        break;
+    default:
+        pRoot = &m_rootControl;
+        break;
+    }
+
+    return pRoot;
+}
+
+void CAudioSystemEditor_FMOD::UpdateConnectedStatus()
+{
+    for (const auto& idCountPair : m_connectionsByID)
+    {
+        if (idCountPair.second > 0)
+        {
+            auto* control = GetControl(idCountPair.first);
+            if (control)
+            {
+                control->SetConnected(true);
+            }
+        }
+    }
+}
 }

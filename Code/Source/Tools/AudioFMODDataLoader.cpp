@@ -68,12 +68,12 @@ namespace AudioEngineFMOD
             }
             else
             {
-                AZ_Info("AudioSystemEditor_FMOD", "Iterating Control: '%s'", obj["path"].GetString());
-                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parentCtrl, obj["path"].GetString());
+                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parentCtrl, AZStd::string(obj["path"].GetString()));
                 auto itemCtrl = m_audioEditorImpl->CreateControl(ctrlDef);
                 if (itemType == eFMOD_EVENT || itemType == eFMOD_SNAPSHOT)
                 {
-                    LoadSimpleItems(obj["parameters"], itemCtrl, itemType == eFMOD_EVENT ? eFMOD_EVENT_PARAMETER : eFMOD_SNAPSHOT_PARAMETER);
+                    if (obj.HasMember("parameters"))
+                        LoadSimpleItems(obj["parameters"], itemCtrl, itemType == eFMOD_EVENT ? eFMOD_EVENT_PARAMETER : eFMOD_SNAPSHOT_PARAMETER);
                 }
             }
         }
@@ -89,7 +89,7 @@ namespace AudioEngineFMOD
         {
             const auto& obj = item.GetObject();
             bool isLocalized = obj.HasMember("isLocalized") ? obj["isLocalized"].GetBool() : false;
-            auto ctrldef = AudioControls::SControlDef(obj["name"].GetString(), itemType, isLocalized, parent, obj.HasMember("path") ? obj["path"].GetString() : "");
+            auto ctrldef = AudioControls::SControlDef(obj["name"].GetString(), itemType, isLocalized, parent, obj.HasMember("path") ? AZStd::string(obj["path"].GetString()) : "");
             m_audioEditorImpl->CreateControl(ctrldef);
         }
     }

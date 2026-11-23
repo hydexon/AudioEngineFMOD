@@ -40,7 +40,10 @@ namespace AudioEngineFMOD
     private:
         friend class CAudioFMODDataLoader;
         AudioControls::IAudioSystemControl* GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl* parent = nullptr) const;
+        AudioControls::IAudioSystemControl* GetControlByPath(const AZStd::string& name, AudioControls::TImplControlType type);
         AudioControls::IAudioSystemControl* CreatePlaceholderFolderPath(const AZStd::string& path, AudioControls::TImplControlType type);
+        AudioControls::IAudioSystemControl* GetRootControlForType(const AudioControls::TImplControlType type);
+        void UpdateConnectedStatus();
 
         using TControlPtr = AZStd::shared_ptr<AudioControls::IAudioSystemControl>;
         using TControlMap = AZStd::unordered_map<AudioControls::CID, TControlPtr>;
@@ -48,6 +51,7 @@ namespace AudioEngineFMOD
 
         using TConnectionsMap = AZStd::unordered_map<AudioControls::CID, int>;
         TConnectionsMap m_connectionsByID;
+        AZStd::unordered_map<AudioControls::CID, AZStd::string> m_fmodControlPaths;
 
         AudioControls::IAudioSystemControl m_rootControl;
         AudioControls::IAudioSystemControl m_banksControl, m_eventsControl, m_snapshotsCtrl, m_globalParamsCtrl, m_returnsControl;

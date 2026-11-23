@@ -495,6 +495,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
 EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml::xml_node<char> *audioFileEntryNode, SATLAudioFileEntryInfo *fileEntryInfo) {
 
     EAudioRequestStatus result = EAudioRequestStatus::Failure;
+#if 0
     if(audioFileEntryNode && azstricmp(audioFileEntryNode->name(), XMLTags::FMODStudioBankTag) == 0 && fileEntryInfo)
     {
         const char* audioFileEntryName = nullptr;
@@ -532,7 +533,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             fileEntryInfo->pImplData = nullptr;
         }
     }
-
+#endif
     return result;
 }
 
@@ -574,7 +575,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
             }
         }
     }
-
+#if 0
     if(AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODEventTag))
     {
 
@@ -582,7 +583,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     else if (AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODSnapshot))
     {
     }
-
+#endif
     return newTriggerImpl;
 }
 
