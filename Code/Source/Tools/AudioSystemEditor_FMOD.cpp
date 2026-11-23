@@ -9,8 +9,9 @@
 #include "../Clients/Engine/Common_FMOD.h"
 #include "AudioConnections.h"
 
-#include "ConnectionWidgets/LoadSampleDataForm.h"
 #include "ConnectionWidgets/EventPropertiesForm.h"
+#include "ConnectionWidgets/FMODParamToRTPCWidget.h"
+#include "ConnectionWidgets/FMODParamToStateWidget.h"
 
 void InitFMODResources()
 {
@@ -129,17 +130,24 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
 {
     AZStd::string fullName = controlDefinition.m_name;
     IAudioSystemControl* parent = controlDefinition.m_parentControl;
-    if (parent)
+
+    if(controlDefinition.m_path.empty()) //Folders, Soundbanks and Returns.
     {
-        AZ::StringFunc::Path::Join(controlDefinition.m_parentControl->GetName().c_str(), fullName.c_str(), fullName);
+        auto pCtrl = parent ? parent : &m_rootControl;
+
+        if(controlDefinition.m_isLocalized) // Localized Banks.
+        {
+            AZStd::string baseLocalized = "";
+            AZ::StringFunc::Path::Join(pCtrl->GetName().c_str(), m_currentLanguageName.c_str(), baseLocalized);
+            AZ::StringFunc::Path::Join(baseLocalized.c_str(), fullName.c_str(), fullName);
+        }
+        else
+        {
+            AZ::StringFunc::Path::Join(pCtrl->GetName().c_str(), fullName.c_str(), fullName);
+        }
     }
 
-    if (!controlDefinition.m_path.empty())
-    {
-        AZ::StringFunc::Path::Join(controlDefinition.m_path.c_str(), fullName.c_str(), fullName);
-    }
-
-    CID id = Audio::AudioStringToID<CID>(fullName.c_str());
+    CID id = Audio::AudioStringToID<CID>(controlDefinition.m_path.empty() ? fullName.c_str() : controlDefinition.m_path.c_str());
     if (AudioControls::IAudioSystemControl* control = GetControl(id))
     {
         if (control->IsPlaceholder())
@@ -251,6 +259,11 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
             }
             break;
         }
+    case eFMOD_EVENT:
+    case eFMOD_SNAPSHOT:
+        {
+            return AZStd::make_shared<FMODEventConnection>(middlewareControl->GetId());
+        }
     default:
         return AZStd::make_shared<AudioControls::IAudioConnection>(middlewareControl->GetId());
     }
@@ -258,7 +271,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
     return AZStd::make_shared<AudioControls::IAudioConnection>(middlewareControl->GetId()); //I wonder why.
 }
 
-AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, [[maybe_unused]]AudioControls::EACEControlType atlControlType)
+AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNode(AZ::rapidxml::xml_node<char> *node, AudioControls::EACEControlType atlControlType)
 {
     using namespace Audio;
     if(!node)
@@ -330,27 +343,50 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
 
     switch (type)
     {
+    case eFMOD_SNAPSHOT:
     case eFMOD_EVENT:
         {
+            auto conn = AZStd::make_shared<FMODEventConnection>(control->GetId());
+            auto evtTypeAttr = node->first_attribute(XMLTags::EventTypeAttr);
 
-        }
-    break;
-    case eFMOD_SNAPSHOT:
-        {
-
+            if(evtTypeAttr)
+            {
+                conn->m_eventType = Utils::GetActionFromXmlStr(evtTypeAttr->value());
+            }
+            return conn;
         }
     break;
     case eFMOD_SNAPSHOT_PARAMETER:
     case eFMOD_GLOBAL_PARAMETER:
     case eFMOD_EVENT_PARAMETER:
         {
-
+            if(atlControlType == AudioControls::eACET_RTPC)
+            {
+                auto conn = AZStd::make_shared<FMODParamRtpcConnection>(control->GetId());
+                if(auto shiftAttr = node->first_attribute(XMLTags::ShiftAttr))
+                {
+                    conn->m_shift = AZ::StringFunc::ToFloat(shiftAttr->value());
+                }
+                if(auto multAttr = node->first_attribute(XMLTags::MultAttr))
+                {
+                    conn->m_mult = AZ::StringFunc::ToFloat(multAttr->value());
+                }
+                return conn;
+            }
+            else if(atlControlType == AudioControls::eACET_SWITCH || atlControlType == AudioControls::eACET_SWITCH_STATE)
+            {
+                auto conn = AZStd::make_shared<FMODParamToStateConnection>(control->GetId());
+                if(auto valueAttr = node->first_attribute(XMLTags::ValueAttr))
+                {
+                    conn->m_value = AZ::StringFunc::ToFloat(valueAttr->value());
+                }
+                return conn;
+            }
         }
     break;
-
+    default:
+        return AZStd::make_shared<IAudioConnection>(control->GetId());
     }
-
-
 
     return nullptr;
 }
@@ -509,22 +545,49 @@ QWidget *CAudioSystemEditor_FMOD::CreateConnectionPropertiesWidget(const AudioCo
     if(!control)
         return nullptr;
 
+    switch(control->GetType())
+    {
+    case eFMOD_EVENT:
+    case eFMOD_SNAPSHOT:
+        return new EventPropertiesForm(connection, control->GetType());
+    case eFMOD_SNAPSHOT_PARAMETER:
+    case eFMOD_GLOBAL_PARAMETER:
+    case eFMOD_EVENT_PARAMETER:
+        {
+            if(atlControlType == AudioControls::eACET_RTPC)
+            {
+                return new FMODParamToRTPCWidget(connection);
+            }
+            else if(atlControlType == AudioControls::eACET_SWITCH || atlControlType == AudioControls::eACET_SWITCH_STATE)
+            {
+                return new FMODParamToStateWidget(connection);
+            }
+        }
+    default:
+        return nullptr;
+    }
+
     return nullptr;
 }
 
 IAudioSystemControl *CAudioSystemEditor_FMOD::GetControlByName(AZStd::string name, bool isLocalized, AudioControls::IAudioSystemControl *parent) const
 {
-    if (parent) //Used likely by the Return and Soundbank controls.
-    {
-        AZ::StringFunc::Path::Join(parent->GetName().c_str(), name.c_str(), name);
-    }
+    //Used likely by the Return and Soundbank controls.
+    auto pCtrl = parent ? parent : &m_rootControl;
+    auto fullName = name;
 
+    AZStd::string basePath = "";
     if(isLocalized)
     {
-        AZ::StringFunc::Path::Join(m_currentLanguageName.c_str(), name.c_str(), name);
+        AZ::StringFunc::Path::Join(pCtrl->GetName().c_str(), m_currentLanguageName.c_str(), basePath);
+        AZ::StringFunc::Path::Join(basePath.c_str(), name.c_str(), fullName);
+    }
+    else
+    {
+        AZ::StringFunc::Path::Join(pCtrl->GetName().c_str(), name.c_str(), fullName);
     }
 
-    return GetControl(Audio::AudioStringToID<CID>(name.data()));
+    return GetControl(Audio::AudioStringToID<CID>(fullName.data()));
 }
 
 IAudioSystemControl* CAudioSystemEditor_FMOD::GetControlByPath(const AZStd::string& name,
