@@ -448,8 +448,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
 
     if(audioFileEntry)
     {
-        auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData);
-        if(implFileEntryData)
+        if(auto const implFileEntryData = static_cast<SATLAudioFileEntryData_FMOD*>(audioFileEntry->pImplData))
         {
             //Remove the cache entries from the parameters cache before unloading the bank.
             int evtCount = 0;
@@ -477,8 +476,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
                     }
                 }
             }
-            FMOD_RESULT bankResult = implFileEntryData->m_FMODBank->unload();
-            if(bankResult != FMOD_OK)
+            if(FMOD_RESULT bankResult = implFileEntryData->m_FMODBank->unload(); bankResult != FMOD_OK)
             {
                 AZ_Warning("FMODAudioSystem", false, "FMOD::Studio::Bank::Unload returned %s", FMOD_ErrorString(bankResult));
                 result = EAudioRequestStatus::Failure;
@@ -489,25 +487,21 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterInMemoryFile(SATLAudioFileEn
     }
 
     return result;
-
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml::xml_node<char> *audioFileEntryNode, SATLAudioFileEntryInfo *fileEntryInfo) {
 
     EAudioRequestStatus result = EAudioRequestStatus::Failure;
-#if 0
-    if(audioFileEntryNode && azstricmp(audioFileEntryNode->name(), XMLTags::FMODStudioBankTag) == 0 && fileEntryInfo)
+    if(audioFileEntryNode && azstricmp(audioFileEntryNode->name(), XMLTags::BankTag) == 0 && fileEntryInfo)
     {
         const char* audioFileEntryName = nullptr;
-        auto bankPathAttr = audioFileEntryNode->first_attribute(XMLTags::FMODPathAttribute, 0, false);
-        if(bankPathAttr)
+        if(auto bankPathAttr = audioFileEntryNode->first_attribute(XMLTags::NameAttr, 0, false))
         {
             audioFileEntryName = bankPathAttr->value();
         }
 
         bool isLocalized = false;
-        auto localizedAttr = audioFileEntryNode->first_attribute(XMLTags::FMODLocalizedAttribute, 0, false);
-        if(localizedAttr)
+        if(auto localizedAttr = audioFileEntryNode->first_attribute(XMLTags::LocalizedAttr, 0, false))
         {
             if(azstricmp(localizedAttr->value(), "true") == 0)
             {
@@ -524,6 +518,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
             fileEntryInfo->sFileName = audioFileEntryName;
             fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (bankBaseName.c_str()), Audio::AudioImplAllocator);
+            AZ_Info("FMODAudioSystem", "Successfully parsed audio bank file entry: %s", fileEntryInfo->sFileName);
             result = EAudioRequestStatus::Success;
         }
         else
@@ -533,7 +528,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             fileEntryInfo->pImplData = nullptr;
         }
     }
-#endif
     return result;
 }
 
@@ -799,7 +793,6 @@ void AudioSystemImpl_FMOD::OnAudioSystemRefresh() {
         AZ_Error("FMODAudioSystem", false, "FMOD Studio Failed to load Master.strings.bank: %s", FMOD_ErrorString(bankResult));
         m_masterStringsBank = nullptr;
     }
-
 }
 
 void AudioSystemImpl_FMOD::SetBankPaths()

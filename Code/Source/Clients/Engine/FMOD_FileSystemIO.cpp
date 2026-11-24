@@ -25,7 +25,7 @@ namespace AudioEngineFMOD
     FMOD_RESULT AzFileOpen(const char *name, unsigned int *filesize, void **handle, void *)
     {
         const AZ::IO::FixedMaxPath AssetsBankPath = GetFMODBanksRootPath().data();
-        auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native();
+        auto fullFilePath = AZ::IO::FixedMaxPath { AssetsBankPath / name }.Native(); //TODO: I think it should be moved to ParseAudioFileEntry instead.
 
         auto fileIO = AZ::IO::FileIOBase::GetInstance();
         if(AZ::u64 fileSize = 0; fileIO->Size(fullFilePath.data(), fileSize) && fileSize != 0)

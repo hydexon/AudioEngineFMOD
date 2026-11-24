@@ -61,7 +61,6 @@ namespace AudioEngineFMOD
 
             if (const auto jtype = obj["type"].GetString(); AZ::StringFunc::Equal(jtype, "Folder"))
             {
-                AZ_Info("AudioSystemEditor_FMOD", "Iterating Folder: '%s'", obj["name"].GetString());
                 auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), eFMOD_FOLDER, false, parentCtrl);
                 auto folderCtrl = m_audioEditorImpl->CreateControl(ctrlDef);
                 LoadItems(obj["items"], folderCtrl, itemType);

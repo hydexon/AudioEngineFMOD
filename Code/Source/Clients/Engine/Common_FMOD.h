@@ -58,7 +58,7 @@ namespace AudioEngineFMOD
 
 
     enum class FMODEventType {
-        Play,
+        Play = 0,
         Stop
     };
 

@@ -10,25 +10,6 @@
 
 namespace AudioEngineFMOD {
 
-void SetComboboxIndexFromAction(FMODEventType action, QComboBox* cb)
-{
-    switch(action) {
-    case FMODEventType::Play:
-        cb->setCurrentIndex(0);
-        break;
-    case FMODEventType::Stop:
-        cb->setCurrentIndex(1);
-        break;
-    default:
-        break;
-    }
-}
-
-FMODEventType GetEventActionFromComboBox(QComboBox* cb)
-{
-    return FMODEventType::Play;
-}
-
 EventPropertiesForm::EventPropertiesForm(AudioControls::TConnectionPtr connection, AudioControls::TImplControlType ctrlType, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::EventPropertiesForm),
@@ -38,7 +19,6 @@ EventPropertiesForm::EventPropertiesForm(AudioControls::TConnectionPtr connectio
     ui->setupUi(this);
 
     AzQtComponents::ComboBox::addCustomCheckStateStyle(ui->m_cbAction);
-
     connect(ui->m_cbAction, &QComboBox::currentIndexChanged, this, &EventPropertiesForm::UpdateConnectionFromWidgets);
 
     UpdateWidgetsFromConnection();
@@ -55,7 +35,7 @@ void EventPropertiesForm::UpdateConnectionFromWidgets()
         return;
 
     auto* conn = static_cast<FMODEventConnection*>(m_connection.get());
-    conn->m_eventType   = GetEventActionFromComboBox(ui->m_cbAction);
+    conn->m_eventType   = static_cast<FMODEventType>(ui->m_cbAction->currentIndex());
 
     emit PropertiesChanged();
 }
@@ -65,7 +45,7 @@ void EventPropertiesForm::UpdateWidgetsFromConnection()
     m_inUpdateWidgetsFromConnection = true;
 
     auto* conn = static_cast<FMODEventConnection*>(m_connection.get());
-    SetComboboxIndexFromAction(conn->m_eventType, ui->m_cbAction);
+    ui->m_cbAction->setCurrentIndex(static_cast<int>(conn->m_eventType));
     m_inUpdateWidgetsFromConnection = false;
 }
 

@@ -116,7 +116,7 @@ function exportFmodProjectData(outFilePath) {
 
     var banks = allBanks.map( bank => {
         return {
-            name: bank.name,
+            name: "{0}.bank".format(bank.name),
             isLocalized: bank.audioTable !== undefined && bank.audioTable !== null,
         };
     });
@@ -167,7 +167,7 @@ function exportFmodProjectData(outFilePath) {
         return false;
     }
 
-    jsonFile.writeText(JSON.stringify(exportData, null, 2));
+    jsonFile.writeText(JSON.stringify(exportData));
     jsonFile.close();
 
     console.log("JSON file successfully created at: " + outFilePath);

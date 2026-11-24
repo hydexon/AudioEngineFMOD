@@ -100,8 +100,6 @@ CAudioSystemEditor_FMOD::CAudioSystemEditor_FMOD()
 
     m_returnsControl.SetParent(&m_rootControl);
     m_rootControl.AddChild(&m_returnsControl);
-
-
 }
 
 void CAudioSystemEditor_FMOD::Reload()
@@ -119,11 +117,6 @@ void CAudioSystemEditor_FMOD::Reload()
     m_loader.Load(this);
     m_connectionsByID.clear();
     UpdateConnectedStatus();
-
-    for (const auto& pathPairs : m_fmodControlPaths)
-    {
-        AZ_Info("AudioSystemEditorFMOD","ControlId: %d, Path: %s", pathPairs.first, pathPairs.second.c_str() );
-    }
 }
 
 AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const AudioControls::SControlDef &controlDefinition)
@@ -173,7 +166,6 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
         newControl->SetLocalized(controlDefinition.m_isLocalized);
         m_controls[id] = newControl;
         m_fmodControlPaths[id] = controlDefinition.m_path;
-        AZ_Info("AudioSystemEditor_FMOD", "Creating Control '%s'(%d) with Path: %s", controlDefinition.m_name.c_str(), id, controlDefinition.m_path.c_str());
         return newControl.get();
     }
 }
@@ -253,7 +245,7 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionToControl
             {
                 return AZStd::make_shared<FMODParamRtpcConnection>(middlewareControl->GetId());
             }
-            else if (atlControlType == eACET_SWITCH_STATE)
+            else if (atlControlType == eACET_SWITCH || atlControlType == eACET_SWITCH_STATE)
             {
                 return AZStd::make_shared<FMODParamToStateConnection>(middlewareControl->GetId());
             }
@@ -340,6 +332,12 @@ AudioControls::TConnectionPtr CAudioSystemEditor_FMOD::CreateConnectionFromXMLNo
             }
         }
     }
+
+    if (!control)
+        return nullptr;
+
+    control->SetConnected(true);
+    ++m_connectionsByID[control->GetId()];
 
     switch (type)
     {
