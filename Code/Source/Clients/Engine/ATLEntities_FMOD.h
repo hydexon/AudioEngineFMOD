@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common_FMOD.h"
 #include <ATLEntityData.h>
 #include <fmod_studio.hpp>
 #include <AudioAllocators.h>
@@ -25,7 +26,21 @@ namespace AudioEngineFMOD
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
+        explicit SATLTriggerImplData_FMOD(
+                Audio::TAudioTriggerImplID id,
+                FMODEventType evtType,
+                FMOD::Studio::EventDescription* evtDesc,
+                FMOD_GUID guid)
+            : m_id(id)
+            , m_type(evtType)
+            , m_eventDescription(evtDesc)
+            , m_guid(guid)
+        {}
 
+        Audio::TAudioTriggerImplID m_id;
+        FMODEventType m_type;
+        FMOD::Studio::EventDescription* m_eventDescription;
+        FMOD_GUID m_guid;
     };
 
     struct SATLEnvironmentImplData_FMOD : public Audio::IATLEnvironmentImplData

@@ -86,7 +86,7 @@ namespace AudioEngineFMOD
         FMOD_STUDIO_PARAMETER_ID id = { 0 };
     };
 
-    typedef AZStd::fixed_string<256> FixedEventPath;
+    typedef AZStd::fixed_string<256> FMODStringPath;
     typedef AZStd::unordered_map<SATLParameterRtpc_FMOD*, ParamId> FMODParamToIDMap;
     typedef AZStd::unordered_map<SATLSwitchStateImplData_FMOD*, ParamId> FMODSwitchToIdMap;
 

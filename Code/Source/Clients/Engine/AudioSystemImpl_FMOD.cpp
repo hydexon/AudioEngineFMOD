@@ -4,6 +4,7 @@
 #include "FMOD_FileSystemIO.h"
 #include "Common_FMOD.h"
 #include "ConfigFMOD.h"
+#include "IAudioSystem.h"
 #include "fmod_errors.h"
 
 #include <AzCore/IO/FileIO.h>
@@ -579,7 +580,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     if(AZ::StringFunc::Equal(nodeName, XMLTags::EventTag))
     {
         auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr);
-        if(!pathAttr)
+        if(pathAttr)
         {
             const char* path = pathAttr->value();
             FMOD_GUID guid = { 0 };
@@ -591,19 +592,31 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
                 {
                     eventType = Utils::GetActionFromXmlStr(evtTypeAttr->value());
                 }
-                AZ_UNUSED(eventType);
+                newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), eventType, nullptr, guid), Audio::AudioImplAllocator);
             }
         }
     }
     else if(AZ::StringFunc::Equal(nodeName, XMLTags::SnapshotTag))
     {
-
+        auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr);
+        if(pathAttr)
+        {
+            const char* path = pathAttr->value();
+            FMOD_GUID guid = {0};
+            if(m_studioSystem->lookupID(path, &guid) == FMOD_OK)
+            {
+                FMOD::Studio::EventDescription* evtDescription = nullptr;
+                m_studioSystem->getEventByID(&guid, &evtDescription);
+                newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), FMODEventType::Play, evtDescription, guid), Audio::AudioImplAllocator);
+            }
+        }
     }
 
     return newTriggerImpl;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTriggerData) {
+void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTriggerData)
+{
     azdestroy(oldTriggerData, Audio::AudioImplAllocator, SATLTriggerImplData_FMOD);
 }
 
