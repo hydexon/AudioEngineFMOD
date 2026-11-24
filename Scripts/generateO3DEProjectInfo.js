@@ -114,7 +114,7 @@ function exportFmodProjectData(outFilePath) {
     };
     var snapshots = transverseSnapshotGroup(studio.project.workspace.mixer.snapshotList, "Snapshots");
 
-    var banks = allBanks.map( bank => {
+    var banks = allBanks.filter( b => b.name.toLowerCase() !== "master"). map( bank => {
         return {
             name: "{0}.bank".format(bank.name),
             isLocalized: bank.audioTable !== undefined && bank.audioTable !== null,

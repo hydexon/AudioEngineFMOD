@@ -210,7 +210,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectDat
     auto it = std::find(m_registeredAudioObjects.begin(), m_registeredAudioObjects.end(), obj);
     if(it == m_registeredAudioObjects.end())
     {
-        obj->m_name = objectName;
+        //obj->m_name = objectName;
         m_registeredAudioObjects.push_back(obj);
         return EAudioRequestStatus::Success;
     }
@@ -243,7 +243,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ResetAudioObject(IATLAudioObjectData *
     SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
     if(obj)
     {
-        obj->Reset();
+        //obj->Reset();
         return EAudioRequestStatus::Success;
     }
 
@@ -287,11 +287,12 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectD
     auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
     if(implEvtData)
     {
+        /*
         FMOD_RESULT res = implEvtData->m_evtInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
         if(res == FMOD_OK)
         {
             result = EAudioRequestStatus::Success;
-        }
+        }*/
     }
     return result;
 }
@@ -304,7 +305,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *obj
         return EAudioRequestStatus::Failure;
     }
 
-    obj->StopAllEvents();
+    //obj->StopAllEvents();
     return EAudioRequestStatus::Success;
 }
 
@@ -315,7 +316,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objec
         return EAudioRequestStatus::FailureInvalidObjectId;
     }
 
-    fmodObj->Set3DAttributes(worldPosition);
+    //fmodObj->Set3DAttributes(worldPosition);
     return EAudioRequestStatus::Success;
 }
 
@@ -518,7 +519,6 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ParseAudioFileEntry(const AZ::rapidxml
             fileEntryInfo->nMemoryBlockAlignment = FMOD_STUDIO_LOAD_MEMORY_ALIGNMENT;
             fileEntryInfo->sFileName = audioFileEntryName;
             fileEntryInfo->pImplData = azcreate(SATLAudioFileEntryData_FMOD, (bankBaseName.c_str()), Audio::AudioImplAllocator);
-            AZ_Info("FMODAudioSystem", "Successfully parsed audio bank file entry: %s", fileEntryInfo->sFileName);
             result = EAudioRequestStatus::Success;
         }
         else
@@ -547,6 +547,26 @@ const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntry
     return nullptr;
 }
 
+AZStd::string GetATLControlName(const AZ::rapidxml::xml_node<char>* node)
+{
+    //Get the ATL Control Trigger name for debug purposes:
+    AZStd::string atlName;
+    if(node->parent())
+    {
+        const char* parentName = node->parent()->name();
+        if(azstricmp(parentName, "ATLTrigger") == 0)
+        {
+            auto atlnameAttr = node->parent()->first_attribute("atl_name");
+            if(atlnameAttr)
+            {
+                atlName = atlnameAttr->value();
+            }
+        }
+    }
+
+    return atlName;
+}
+
 IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode)
 {
     SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
@@ -555,29 +575,31 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
         return nullptr;
     }
 
-    //Get the ATL Control Trigger name for debug purposes:
-    AZStd::string atlName;
-    if(audioTriggerNode->parent())
+    const char* nodeName = audioTriggerNode->name();
+    if(AZ::StringFunc::Equal(nodeName, XMLTags::EventTag))
     {
-        const char* parentName = audioTriggerNode->parent()->name();
-        if(azstricmp(parentName, "ATLTrigger") == 0)
+        auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr);
+        if(!pathAttr)
         {
-            auto atlnameAttr = audioTriggerNode->parent()->first_attribute("atl_name");
-            if(atlnameAttr)
+            const char* path = pathAttr->value();
+            FMOD_GUID guid = { 0 };
+            if(m_studioSystem->lookupID(path, &guid) == FMOD_OK)
             {
-                atlName = atlnameAttr->value();
+                auto eventType = FMODEventType::Play;
+                auto evtTypeAttr = audioTriggerNode->first_attribute(XMLTags::EventTypeAttr);
+                if(evtTypeAttr)
+                {
+                    eventType = Utils::GetActionFromXmlStr(evtTypeAttr->value());
+                }
+                AZ_UNUSED(eventType);
             }
         }
     }
-#if 0
-    if(AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODEventTag))
+    else if(AZ::StringFunc::Equal(nodeName, XMLTags::SnapshotTag))
     {
 
     }
-    else if (AZ::StringFunc::Equal(audioTriggerNode->name(), XMLTags::FMODSnapshot))
-    {
-    }
-#endif
+
     return newTriggerImpl;
 }
 
@@ -585,13 +607,8 @@ void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTr
     azdestroy(oldTriggerData, Audio::AudioImplAllocator, SATLTriggerImplData_FMOD);
 }
 
-IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode) {
-
-    if(!audioRtpcNode)
-    {
-        return nullptr;
-    }
-
+IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode)
+{
     return nullptr;
 }
 
@@ -621,14 +638,14 @@ void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplDat
 
 IATLAudioObjectData *AudioSystemImpl_FMOD::NewGlobalAudioObjectData(TAudioObjectID objectId)
 {
-    auto obj = azcreate(SATLAudioObjectData_FMOD, (objectId), Audio::AudioImplAllocator);
+    auto obj = azcreate(SATLAudioObjectData_FMOD, (), Audio::AudioImplAllocator);
     m_globalAudioObjectId = objectId;
     return obj;
 }
 
 IATLAudioObjectData *AudioSystemImpl_FMOD::NewAudioObjectData(TAudioObjectID objectId)
 {
-    return azcreate(SATLAudioObjectData_FMOD, (objectId), Audio::AudioImplAllocator);
+    return azcreate(SATLAudioObjectData_FMOD, (), Audio::AudioImplAllocator);
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioObjectData(IATLAudioObjectData *oldObjectData) {
@@ -652,7 +669,7 @@ void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldLi
 }
 
 IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData(TAudioEventID eventID) {
-    auto audioEventData = azcreate(SATLEventData_FMOD, (eventID), Audio::AudioImplAllocator);
+    auto audioEventData = azcreate(SATLEventData_FMOD, (), Audio::AudioImplAllocator);
     return audioEventData;
 }
 
@@ -664,7 +681,6 @@ void AudioSystemImpl_FMOD::ResetAudioEventData(IATLEventData *eventData) {
     auto event = static_cast<SATLEventData_FMOD*>(eventData);
     if(event)
     {
-        event->Reset();
     }
 }
 

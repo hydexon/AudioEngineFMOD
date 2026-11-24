@@ -2,9 +2,7 @@
 
 #include <ATLEntityData.h>
 #include <fmod_studio.hpp>
-#include "Common_FMOD.h"
 #include <AudioAllocators.h>
-#include <AzCore/XML/rapidxml.h>
 
 namespace AudioEngineFMOD
 {
@@ -15,100 +13,27 @@ namespace AudioEngineFMOD
 
     struct SATLAudioObjectData_FMOD : public Audio::IATLAudioObjectData
     {
-        explicit SATLAudioObjectData_FMOD(Audio::TAudioControlID id);
-        virtual ~SATLAudioObjectData_FMOD() {}
-
-        void Reset();
-        void Set3DAttributes(const Audio::SATLWorldPosition& attribs);
-        void SetObstructionAndOcclusion(float obstruction, float occlusion);
-
-        bool ApplyEvent(SATLEventData_FMOD* event);
-        void RemoveEvent(SATLEventData_FMOD* event);
-        void StopEvent(uint32_t eventId);
-        void StopAllEvents();
-
-        void ApplyParameter(SATLParameterRtpc_FMOD* param, float value);
-        void RemoveParameter(SATLParameterRtpc_FMOD* param);
-
-        void ApplySwitch(SATLSwitchStateImplData_FMOD* switchImpl);
-        void RemoveSwitch(SATLSwitchStateImplData_FMOD* switchImpl);
-
-        void ApplyEnvironment(SATLEnvironmentImplData_FMOD* env, float value);
-        void RemoveEnvironment(SATLEnvironmentImplData_FMOD* env);
-
-        Audio::TAudioControlID m_id;
-        FMOD_3D_ATTRIBUTES m_attributes;
-        AZStd::fixed_string<512> m_name;
-
-        AZStd::vector<SATLEventData_FMOD*> m_events;
-        AZStd::unordered_map<SATLParameterRtpc_FMOD*, float> m_params;
-        AZStd::unordered_map<AZ::u32, SATLSwitchStateImplData_FMOD*> m_switches;
-        AZStd::unordered_map<SATLEnvironmentImplData_FMOD*, float> m_environments;
     };
 
     struct SATLEventData_FMOD : public Audio::IATLEventData
     {
-        explicit SATLEventData_FMOD(const Audio::TAudioControlID AudioEvtId)
-            : m_eventId(AudioEvtId)
-        {};
-
-        bool PrepareForOcclusion();
-        void SetObstructionOcclusion(float obstruction, float occlusion);
-        void TrySetEnvironment(SATLEnvironmentImplData_FMOD* envData, float value);
-        void Reset();
-
-        Audio::TAudioEventID m_eventId;
-        uint32_t m_eventPathId;
-        float m_lpfMax = 0.0f;
-        float m_lpfMin = 0.0f;
-
-        bool m_occlusionParamFound;
-        FMOD::Studio::EventDescription* m_description;
-        FMOD::Studio::EventInstance* m_evtInstance;
-        FMOD::ChannelGroup* m_masterTrack;
-        FMOD::DSP* m_lpFilter;
-        FMOD_STUDIO_PARAMETER_ID m_occlusionParamID;
-
-        SATLAudioObjectData_FMOD* m_audioObject;
     };
 
     struct SATLParameterRtpc_FMOD : public Audio::IATLRtpcImplData
     {
-        explicit SATLParameterRtpc_FMOD(
-                uint32_t eventPathId,
-                float const mult,
-                float const shift)
-            : m_eventPathId(eventPathId)
-            , m_mult(mult)
-            , m_shift(shift)
-        {};
-
-        uint32_t m_eventPathId;
-        float const m_mult;
-        float const m_shift;
-        AZStd::fixed_string<256> m_name;
     };
 
     struct SATLTriggerImplData_FMOD : public Audio::IATLTriggerImplData
     {
-        uint32_t m_eventPathId;
-        FMODEventType m_eventAction;
-        FMOD::Studio::EventDescription* m_eventDescription;
-        FMOD_STUDIO_PARAMETER_ID m_occlusionParam;
-        FMOD_GUID m_guid;
+
     };
 
     struct SATLEnvironmentImplData_FMOD : public Audio::IATLEnvironmentImplData
     {
-        FMOD::Studio::EventDescription* m_eventDescription;
-        FMOD::Studio::Bus* m_bus;
     };
 
     struct SATLSwitchStateImplData_FMOD : public Audio::IATLSwitchStateImplData
     {
-        uint32_t eventPathId;
-        float value;
-        AZStd::fixed_string<512> m_name;
     };
 
     struct SATLListenerData_FMOD : public Audio::IATLListenerData
