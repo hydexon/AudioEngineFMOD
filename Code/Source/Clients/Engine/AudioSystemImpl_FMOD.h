@@ -9,7 +9,9 @@
 
 namespace AudioEngineFMOD
 {
-    struct SATLAudioObjectData_FMOD;
+    struct ATLAudioObject_FMOD;
+    struct ATLEventData_FMOD;
+
     class AudioSystemImpl_FMOD : public Audio::AudioSystemImplementation
     {
     public:
@@ -197,7 +199,8 @@ namespace AudioEngineFMOD
         AZStd::string m_localizedFMODBankPath;
 
         Audio::TAudioObjectID m_globalAudioObjectId;
-        AZStd::vector<SATLAudioObjectData_FMOD*> m_registeredAudioObjects;
+        AZStd::vector<ATLAudioObject_FMOD*> m_registeredAudioObjects;
+        AZStd::vector<ATLEventData_FMOD*> m_pendingEvents;
 
         struct ParameterInfo {
             FMOD_STUDIO_PARAMETER_ID id;

@@ -78,7 +78,7 @@ namespace AudioEngineFMOD
     }
 
     struct SATLParameterRtpc_FMOD;
-    struct SATLSwitchStateImplData_FMOD;
+    struct ATLSwitchState_FMOD;
 
     struct ParamId
     {
@@ -88,7 +88,7 @@ namespace AudioEngineFMOD
 
     typedef AZStd::fixed_string<256> FMODStringPath;
     typedef AZStd::unordered_map<SATLParameterRtpc_FMOD*, ParamId> FMODParamToIDMap;
-    typedef AZStd::unordered_map<SATLSwitchStateImplData_FMOD*, ParamId> FMODSwitchToIdMap;
+    typedef AZStd::unordered_map<ATLSwitchState_FMOD*, ParamId> FMODSwitchToIdMap;
 
     extern FMODParamToIDMap g_ParameterToID;
     extern FMODSwitchToIdMap g_SwitchToID;

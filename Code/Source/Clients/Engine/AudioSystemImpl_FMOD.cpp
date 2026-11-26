@@ -17,6 +17,25 @@ using namespace Audio;
 
 namespace AudioEngineFMOD
 {
+    FMOD_RESULT F_CALL FMODEventCallback(FMOD_STUDIO_EVENT_CALLBACK_TYPE type, FMOD_STUDIO_EVENTINSTANCE* event, void* params)
+    {
+        FMOD::Studio::EventInstance* eventInst = reinterpret_cast<FMOD::Studio::EventInstance*>(event);
+        if (eventInst)
+        {
+            ATLEventData_FMOD* eventData = nullptr;
+            eventInst->getUserData(reinterpret_cast<void**>(&eventData));
+
+            if (eventData != nullptr)
+            {
+                Audio::CallbackRequest::ReportFinishedEvent repFinishedEvt;
+                repFinishedEvt.m_eventId = eventData->GetId();
+                repFinishedEvt.m_status = EAudioRequestStatus::Success;
+                AZ::Interface<IAudioSystem>::Get()->PushRequest(AZStd::move(repFinishedEvt));
+            }
+        }
+        return FMOD_OK;
+    }
+
 #if defined(AZ_DEBUG_BUILD)
     namespace Debug {
         FMOD_RESULT F_CALL AzDebugHook(FMOD_DEBUG_FLAGS flags, const char* file, int line, const char *func, const char* message) {
@@ -202,7 +221,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllSounds() {
 
 EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectData * objectData, const char *objectName)
 {
-    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    ATLAudioObject_FMOD* obj = static_cast<ATLAudioObject_FMOD*>(objectData);
     if(!obj)
     {
         return EAudioRequestStatus::Failure;
@@ -222,7 +241,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterAudioObject(IATLAudioObjectDat
 
 EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectData *objectData)
 {
-    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    ATLAudioObject_FMOD* obj = static_cast<ATLAudioObject_FMOD*>(objectData);
     if(!obj)
     {
         return EAudioRequestStatus::Failure;
@@ -241,7 +260,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnregisterAudioObject(IATLAudioObjectD
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetAudioObject(IATLAudioObjectData *objectData)
 {
-    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    ATLAudioObject_FMOD* obj = static_cast<ATLAudioObject_FMOD*>(objectData);
     if(obj)
     {
         //obj->Reset();
@@ -275,17 +294,53 @@ EAudioRequestStatus AudioSystemImpl_FMOD::UnprepareTriggerAsync([[maybe_unused]]
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData, const SATLSourceData *sourceData) {
-    auto result = EAudioRequestStatus::Success;
+EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *objectData, const IATLTriggerImplData *triggerData, IATLEventData *eventData, const SATLSourceData *sourceData)
+{
+    auto result = EAudioRequestStatus::Failure;
+    auto obj = static_cast<ATLAudioObject_FMOD*>(objectData);
+    auto trigger = static_cast<const ATLTrigger_FMOD*>(triggerData);
+    auto event = static_cast<ATLEventData_FMOD*>(eventData);
 
+    if (obj && trigger && event)
+    {
+        if (trigger->m_type == FMODEventType::Play)
+        {
+            FMOD_RESULT fmod_result = FMOD_ERR_UNINITIALIZED;
+            FMOD::Studio::EventDescription* description = trigger->m_eventDescription;
+            if (description == nullptr)
+            {
+                fmod_result = m_studioSystem->getEventByID(&trigger->m_guid, &description);
+                AZ_Assert(fmod_result == FMOD_OK, "Error trying to retrieve getEventID while activating trigger.");
+            }
+            if (description != nullptr)
+            {
+                FMOD::Studio::EventInstance* instance = nullptr;
+                description->createInstance(&instance);
+                event->SetInstance(instance);
+                event->GetInstance()->setCallback(FMODEventCallback, FMOD_STUDIO_EVENT_CALLBACK_START_FAILED | FMOD_STUDIO_EVENT_CALLBACK_STOPPED);
+                event->GetInstance()->setUserData(event);
+                event->GetInstance()->set3DAttributes(&obj->Get3DAttributes());
+                event->SetEventPathId(trigger->m_id);
+                event->SetATLAudioObject(obj);
 
+                m_pendingEvents.push_back(event);
+                result = EAudioRequestStatus::Success;
+            }
+        }
+        else
+        {
+
+            obj->StopPlayingEvent(trigger->m_id);
+            result = EAudioRequestStatus::Failure;
+        }
+    }
     return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectData, const IATLEventData *eventData)
 {
     EAudioRequestStatus result = EAudioRequestStatus::Failure;
-    auto implEvtData = static_cast<const SATLEventData_FMOD*>(eventData);
+    auto implEvtData = static_cast<const ATLEventData_FMOD*>(eventData);
     if(implEvtData)
     {
         /*
@@ -300,7 +355,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectD
 
 EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *objectData)
 {
-    SATLAudioObjectData_FMOD* obj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    ATLAudioObject_FMOD* obj = static_cast<ATLAudioObject_FMOD*>(objectData);
     if(!obj)
     {
         return EAudioRequestStatus::Failure;
@@ -311,7 +366,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopAllEvents(IATLAudioObjectData *obj
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetPosition(IATLAudioObjectData *objectData, const SATLWorldPosition &worldPosition) {
-    auto* fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    auto* fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
     if(!fmodObj)
     {
         return EAudioRequestStatus::FailureInvalidObjectId;
@@ -333,8 +388,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectDat
 EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData) {
     EAudioRequestStatus result = EAudioRequestStatus::Failure;
 
-    auto* fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-    const auto* fmodSwitchState = static_cast<const SATLSwitchStateImplData_FMOD*>(switchStateData);
+    auto* fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
+    const auto* fmodSwitchState = static_cast<const ATLSwitchState_FMOD*>(switchStateData);
 
     if(fmodObj && fmodSwitchState)
     {
@@ -344,7 +399,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *ob
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
-    auto fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
+    auto fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
 
     if(fmodObj)
     {
@@ -355,8 +410,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjec
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount) {
 
-    auto fmodObj = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-    const auto fmodEnv = static_cast<const SATLEnvironmentImplData_FMOD*>(environmentData);
+    auto fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
+    const auto fmodEnv = static_cast<const ATLEnvironment_FMOD*>(environmentData);
 
     if(fmodObj && fmodEnv)
     {
@@ -365,7 +420,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *ob
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *listenerData, const SATLWorldPosition &newPosition) {
-    auto ldata = static_cast<SATLListenerData_FMOD*>(listenerData);
+    auto ldata = static_cast<ATLListenerData_FMOD*>(listenerData);
     if(!ldata)
     {
         return Audio::EAudioRequestStatus::Failure;
@@ -379,8 +434,8 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *
 
 EAudioRequestStatus AudioSystemImpl_FMOD::ResetRtpc(IATLAudioObjectData *objectData, const IATLRtpcImplData *rtpcData) {
 
-    auto fmodObj  = static_cast<SATLAudioObjectData_FMOD*>(objectData);
-    auto fmodRtpc = static_cast<const SATLParameterRtpc_FMOD*>(rtpcData);
+    auto fmodObj  = static_cast<ATLAudioObject_FMOD*>(objectData);
+    auto fmodRtpc = static_cast<const ATLParameterRtpc_FMOD*>(rtpcData);
 
     if(fmodObj && fmodRtpc)
     {
@@ -570,7 +625,7 @@ AZStd::string GetATLControlName(const AZ::rapidxml::xml_node<char>* node)
 
 IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rapidxml::xml_node<char> *audioTriggerNode)
 {
-    SATLTriggerImplData_FMOD* newTriggerImpl = nullptr;
+    ATLTrigger_FMOD* newTriggerImpl = nullptr;
     if(!audioTriggerNode)
     {
         return nullptr;
@@ -579,27 +634,24 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
     const char* nodeName = audioTriggerNode->name();
     if(AZ::StringFunc::Equal(nodeName, XMLTags::EventTag))
     {
-        auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr);
-        if(pathAttr)
+        if(auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr))
         {
             const char* path = pathAttr->value();
             FMOD_GUID guid = { 0 };
             if(m_studioSystem->lookupID(path, &guid) == FMOD_OK)
             {
                 auto eventType = FMODEventType::Play;
-                auto evtTypeAttr = audioTriggerNode->first_attribute(XMLTags::EventTypeAttr);
-                if(evtTypeAttr)
+                if(auto evtTypeAttr = audioTriggerNode->first_attribute(XMLTags::EventTypeAttr))
                 {
                     eventType = Utils::GetActionFromXmlStr(evtTypeAttr->value());
                 }
-                newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), eventType, nullptr, guid), Audio::AudioImplAllocator);
+                newTriggerImpl = azcreate(ATLTrigger_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), eventType, nullptr, guid), Audio::AudioImplAllocator);
             }
         }
     }
     else if(AZ::StringFunc::Equal(nodeName, XMLTags::SnapshotTag))
     {
-        auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr);
-        if(pathAttr)
+        if(auto pathAttr = audioTriggerNode->first_attribute(XMLTags::PathAttr))
         {
             const char* path = pathAttr->value();
             FMOD_GUID guid = {0};
@@ -607,7 +659,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
             {
                 FMOD::Studio::EventDescription* evtDescription = nullptr;
                 m_studioSystem->getEventByID(&guid, &evtDescription);
-                newTriggerImpl = azcreate(SATLTriggerImplData_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), FMODEventType::Play, evtDescription, guid), Audio::AudioImplAllocator);
+                newTriggerImpl = azcreate(ATLTrigger_FMOD, (AudioStringToID<Audio::TAudioTriggerImplID>(path), FMODEventType::Play, evtDescription, guid), Audio::AudioImplAllocator);
             }
         }
     }
@@ -617,7 +669,7 @@ IATLTriggerImplData *AudioSystemImpl_FMOD::NewAudioTriggerImplData(const AZ::rap
 
 void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTriggerData)
 {
-    azdestroy(oldTriggerData, Audio::AudioImplAllocator, SATLTriggerImplData_FMOD);
+    azdestroy(oldTriggerData, Audio::AudioImplAllocator, ATLTrigger_FMOD);
 }
 
 IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode)
@@ -626,7 +678,7 @@ IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml:
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData) {
-    azdestroy(oldRtpcData, Audio::AudioImplAllocator, SATLParameterRtpc_FMOD);
+    azdestroy(oldRtpcData, Audio::AudioImplAllocator, ATLParameterRtpc_FMOD);
 }
 
 IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char> *audioSwitchStateNode)
@@ -637,7 +689,7 @@ IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData(const
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData([[maybe_unused]] IATLSwitchStateImplData *oldAudioSwitchStateData) {
-    azdestroy(oldAudioSwitchStateData, Audio::AudioImplAllocator, SATLSwitchStateImplData_FMOD);
+    azdestroy(oldAudioSwitchStateData, Audio::AudioImplAllocator, ATLSwitchState_FMOD);
 }
 
 IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
@@ -646,52 +698,52 @@ IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData *oldEnvironmentData) {
-    azdestroy(oldEnvironmentData, Audio::AudioImplAllocator, SATLEnvironmentImplData_FMOD);
+    azdestroy(oldEnvironmentData, Audio::AudioImplAllocator, ATLEnvironment_FMOD);
 }
 
 IATLAudioObjectData *AudioSystemImpl_FMOD::NewGlobalAudioObjectData(TAudioObjectID objectId)
 {
-    auto obj = azcreate(SATLAudioObjectData_FMOD, (), Audio::AudioImplAllocator);
+    auto obj = azcreate(ATLAudioObject_FMOD, (objectId), Audio::AudioImplAllocator);
     m_globalAudioObjectId = objectId;
     return obj;
 }
 
 IATLAudioObjectData *AudioSystemImpl_FMOD::NewAudioObjectData(TAudioObjectID objectId)
 {
-    return azcreate(SATLAudioObjectData_FMOD, (), Audio::AudioImplAllocator);
+    return azcreate(ATLAudioObject_FMOD, (objectId), Audio::AudioImplAllocator);
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioObjectData(IATLAudioObjectData *oldObjectData) {
 
     StopAllAndClearInstancesFromAudioObject(oldObjectData);
-    azdestroy(oldObjectData, Audio::AudioImplAllocator, SATLAudioObjectData_FMOD);
+    azdestroy(oldObjectData, Audio::AudioImplAllocator, ATLAudioObject_FMOD);
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewDefaultAudioListenerObjectData(TATLIDType objectId) {
-    return azcreate(SATLListenerData_FMOD, (0), Audio::AudioImplAllocator);
+    return azcreate(ATLListenerData_FMOD, (0), Audio::AudioImplAllocator);
 }
 
 IATLListenerData *AudioSystemImpl_FMOD::NewAudioListenerObjectData(TATLIDType objectId) {
     static int id = 0;
-    return azcreate(SATLListenerData_FMOD, (++id), Audio::AudioImplAllocator);
+    return azcreate(ATLListenerData_FMOD, (++id), Audio::AudioImplAllocator);
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioListenerObjectData(IATLListenerData *oldListenerData) {
-    auto listener = static_cast<SATLListenerData_FMOD*>(oldListenerData);
-    azdestroy(listener, Audio::AudioImplAllocator, SATLListenerData_FMOD);
+    auto listener = static_cast<ATLListenerData_FMOD*>(oldListenerData);
+    azdestroy(listener, Audio::AudioImplAllocator, ATLListenerData_FMOD);
 }
 
 IATLEventData *AudioSystemImpl_FMOD::NewAudioEventData(TAudioEventID eventID) {
-    auto audioEventData = azcreate(SATLEventData_FMOD, (), Audio::AudioImplAllocator);
+    auto audioEventData = azcreate(ATLEventData_FMOD, (eventID), Audio::AudioImplAllocator);
     return audioEventData;
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioEventData(IATLEventData *oldEventData) {
-    azdestroy(oldEventData, Audio::AudioImplAllocator, SATLAudioObjectData_FMOD);
+    azdestroy(oldEventData, Audio::AudioImplAllocator, ATLAudioObject_FMOD);
 }
 
 void AudioSystemImpl_FMOD::ResetAudioEventData(IATLEventData *eventData) {
-    auto event = static_cast<SATLEventData_FMOD*>(eventData);
+    auto event = static_cast<ATLEventData_FMOD*>(eventData);
     if(event)
     {
     }
