@@ -24,10 +24,12 @@ namespace AudioEngineFMOD
         FMOD_3D_ATTRIBUTES& Get3DAttributes() { return m_attributes; }
         bool PostAudioEvent(ATLEventData_FMOD* event);
         void UnpostAudioEvent(ATLEventData_FMOD* event);
-        bool PostParameter(ATLParameterRtpc_FMOD* rtpc);
+        void PostParameter(ATLParameterRtpc_FMOD* rtpc, const float value);
         void UnpostParameter(ATLParameterRtpc_FMOD* rtpc);
         void SetSwitch(ATLSwitchState_FMOD* state);
-        void SetEnvironment(ATLEnvironment_FMOD* env);
+        void UnsetSwitch(ATLSwitchState_FMOD* state);
+        void SetEnvironment(ATLEnvironment_FMOD* env, const float value);
+        void UnsetEnvironment(ATLEnvironment_FMOD* env);
         void Set3DAttributes(Audio::SATLWorldPosition& pos);
         void StopAllEvents();
         void StopPlayingEvent(uint32_t eventPathId);
@@ -47,13 +49,14 @@ namespace AudioEngineFMOD
     {
         explicit ATLEventData_FMOD(Audio::TAudioEventID id)
             : m_id(id)
-            , m_eventPathId(INVALID_AUDIO_OBJECT_ID)
+            , m_eventPathId(INVALID_AUDIO_EVENT_ID)
             , m_lpCutoffMax(0.0f)
             , m_lpCutoffMIn(0.0f)
             , m_instance(nullptr)
             , m_masterTrack(nullptr)
             , m_lpDsp(nullptr)
-            , m_occlusionParameterDesc({})
+            , m_occlusionParamFound(false)
+            , m_occlusionParameterId({})
             , m_audioObject(nullptr)
         {}
         ~ATLEventData_FMOD() override = default;
@@ -69,8 +72,9 @@ namespace AudioEngineFMOD
         void SetInstance(FMOD::Studio::EventInstance* instance) { m_instance = instance; }
 
         bool PrepareForOcclusion();
+        void SetOcclusionParameterID(FMOD_STUDIO_PARAMETER_ID& paramId);
         void SetOcclusionObstruction(float occlusion, float obstruction);
-        void TrySetEnvironment(ATLEnvironment_FMOD* environment, float value);
+        void TrySetEnvironment(ATLEnvironment_FMOD* environment, float value) const;
     private:
         Audio::TAudioEventID m_id;
         AZ::u32 m_eventPathId;
@@ -78,8 +82,9 @@ namespace AudioEngineFMOD
         FMOD::Studio::EventInstance* m_instance;
         FMOD::ChannelGroup* m_masterTrack;
         FMOD::DSP* m_lpDsp;
-        FMOD_STUDIO_PARAMETER_DESCRIPTION m_occlusionParameterDesc;
+        FMOD_STUDIO_PARAMETER_ID m_occlusionParameterId;
 
+        bool m_occlusionParamFound;
         float m_lpCutoffMax;
         float m_lpCutoffMIn;
 
@@ -88,15 +93,15 @@ namespace AudioEngineFMOD
 
     struct ATLParameterRtpc_FMOD : public Audio::IATLRtpcImplData
     {
-        explicit  ATLParameterRtpc_FMOD(AZ::u32 pathId, float shift, float mult, bool isGlobal = false)
+        explicit  ATLParameterRtpc_FMOD(AZ::u32 targetId, float shift, float mult, bool isGlobal = false)
             : m_shift(shift)
             , m_mult(mult)
-            , m_paramPathId(pathId)
+            , m_targetId(targetId)
             , m_isGlobalParameter(isGlobal)
         {}
         ~ATLParameterRtpc_FMOD() override = default;
 
-        AZ::u32 m_paramPathId;
+        AZ::u32 m_targetId;
         bool m_isGlobalParameter;
         float m_mult;
         float m_shift;

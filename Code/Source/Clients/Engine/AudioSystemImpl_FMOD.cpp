@@ -317,6 +317,14 @@ EAudioRequestStatus AudioSystemImpl_FMOD::ActivateTrigger(IATLAudioObjectData *o
                 FMOD::Studio::EventInstance* instance = nullptr;
                 description->createInstance(&instance);
                 event->SetInstance(instance);
+
+                FMOD_STUDIO_PARAMETER_DESCRIPTION desc;
+                FMOD_RESULT paramRes = description->getParameterDescriptionByName("occlusion", &desc);
+                if (paramRes == FMOD_OK)
+                {
+                    event->SetOcclusionParameterID(desc.id);
+                }
+
                 event->GetInstance()->setCallback(FMODEventCallback, FMOD_STUDIO_EVENT_CALLBACK_START_FAILED | FMOD_STUDIO_EVENT_CALLBACK_STOPPED);
                 event->GetInstance()->setUserData(event);
                 event->GetInstance()->set3DAttributes(&obj->Get3DAttributes());
@@ -343,12 +351,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::StopEvent(IATLAudioObjectData *objectD
     auto implEvtData = static_cast<const ATLEventData_FMOD*>(eventData);
     if(implEvtData)
     {
-        /*
-        FMOD_RESULT res = implEvtData->m_evtInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
-        if(res == FMOD_OK)
-        {
-            result = EAudioRequestStatus::Success;
-        }*/
+
     }
     return result;
 }
@@ -674,6 +677,23 @@ void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTr
 
 IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode)
 {
+    if (!audioRtpcNode)
+    {
+        return nullptr;
+    }
+
+    bool isGlobal = true;
+    auto tagName = audioRtpcNode->name();
+    AZStd::string_view target;
+    if (AZ::StringFunc::Equal(tagName, XMLTags::EventParameterTag) || AZ::StringFunc::Equal(tagName, XMLTags::SnapshotParameterTag))
+    {
+        if (auto targetAttr = audioRtpcNode->first_attribute(XMLTags::TargetAttr))
+        {
+            target = targetAttr->value();
+        }
+        isGlobal = false;
+    }
+
     return nullptr;
 }
 

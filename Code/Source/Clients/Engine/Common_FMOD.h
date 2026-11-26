@@ -73,11 +73,11 @@ namespace AudioEngineFMOD
         FMOD_3D_ATTRIBUTES CreateFMOD3DAttributes(const AZ::Vector3& pos,
                                                   const AZ::Vector3& fw,
                                                   const AZ::Vector3& up,
-                                                  const AZ::Vector3& vel = AZ::Vector3::CreateZero());
+                                                  const AZ::Vector3& vel = AZ::Vector3::CreateOne());
 
     }
 
-    struct SATLParameterRtpc_FMOD;
+    struct ATLParameterRtpc_FMOD;
     struct ATLSwitchState_FMOD;
 
     struct ParamId
@@ -87,10 +87,12 @@ namespace AudioEngineFMOD
     };
 
     typedef AZStd::fixed_string<256> FMODStringPath;
-    typedef AZStd::unordered_map<SATLParameterRtpc_FMOD*, ParamId> FMODParamToIDMap;
+    typedef AZStd::unordered_map<AZ::u32, FMOD::Studio::EventDescription*> FMODPathIdToEventDescriptionMap;
+    typedef AZStd::unordered_map<ATLParameterRtpc_FMOD*, ParamId> FMODParamToIDMap;
     typedef AZStd::unordered_map<ATLSwitchState_FMOD*, ParamId> FMODSwitchToIdMap;
 
-    extern FMODParamToIDMap g_ParameterToID;
-    extern FMODSwitchToIdMap g_SwitchToID;
+    inline FMODParamToIDMap g_ParameterToID;
+    inline FMODSwitchToIdMap g_SwitchToID;
+    inline FMODPathIdToEventDescriptionMap g_PathIdToEventDescription;
 
 }
