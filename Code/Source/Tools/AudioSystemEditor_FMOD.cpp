@@ -166,6 +166,7 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
         newControl->SetLocalized(controlDefinition.m_isLocalized);
         m_controls[id] = newControl;
         m_fmodControlPaths[id] = controlDefinition.m_path;
+        AZ_Assert(m_fmodControlPaths[id].empty() == false, "CreateControl Path is empty!");
         return newControl.get();
     }
 }
@@ -431,7 +432,9 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
 
             if (control->GetType() == eFMOD_EVENT_PARAMETER || control->GetType() == eFMOD_SNAPSHOT_PARAMETER)
             {
-                const auto targetAttr = xmlAlloc.allocate_attribute(XMLTags::TargetAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetParent()->GetId()].c_str()));
+                auto targetPath = m_fmodControlPaths[control->GetParent()->GetId()];
+                AZ_Assert(targetPath.empty() == false, "Target Path for Event or Snapshot Parameters Must not be empty!");
+                const auto targetAttr = xmlAlloc.allocate_attribute(XMLTags::TargetAttr, xmlAlloc.allocate_string(targetPath.c_str()));
                 pNode->append_attribute(targetAttr);
             }
 
