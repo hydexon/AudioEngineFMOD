@@ -126,25 +126,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    FMOD_STUDIO_ADVANCEDSETTINGS studioSettings = { .cbsize = sizeof(FMOD_STUDIO_ADVANCEDSETTINGS) };
-    m_studioSystem->getAdvancedSettings(&studioSettings);
-
-    studioSettings.commandqueuesize  = CVars::s_FMODStudio_CommandQueueSize;
-    studioSettings.studioupdateperiod = CVars::s_FMODStudio_StudioUpdatePeriod;
-    studioSettings.idlesampledatapoolsize = CVars::s_FMODStudio_IdleSampleDataPoolSize;
-    studioSettings.streamingscheduledelay = CVars::s_FMODStudio_StreamingScheduleDelay;
-    studioSettings.cbsize = sizeof(FMOD_STUDIO_ADVANCEDSETTINGS);
-
-    m_studioSystem->setAdvancedSettings(&studioSettings);
-
     m_studioSystem->getCoreSystem(&m_lowlvlSystem);
-
-    FMOD_ADVANCEDSETTINGS coreSettings;
-    coreSettings.profilePort = CVars::s_FMODCore_ProfilePort;
-    coreSettings.cbSize = sizeof(FMOD_ADVANCEDSETTINGS);
-
-    m_lowlvlSystem->setAdvancedSettings(&coreSettings);
-
     m_lowlvlSystem->setFileSystem(
                 SyncIO::AzFileOpen,
                 SyncIO::AzFileClose,
@@ -163,7 +145,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
     SetBankPaths();
 
     result = m_studioSystem->initialize(CVars::s_FMODStudio_MaxChannels,
-                                      CVars::s_FMODStudio_EnableProfiling ? FMOD_STUDIO_INIT_LIVEUPDATE : FMOD_STUDIO_INIT_NORMAL,
+                                      FMOD_STUDIO_INIT_NORMAL,
                                       FMOD_INIT_NORMAL,
                                       nullptr);
 
@@ -192,8 +174,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::Initialize() {
         return EAudioRequestStatus::Failure;
     }
 
-    m_studioSystem->setNumListeners(CVars::s_FMOD_MaxListeners); //@TODO: Should be left as a Cvar?
-
+    m_studioSystem->setNumListeners(FMOD_MAX_LISTENERS); //@TODO: Should be left as a Cvar?
     return EAudioRequestStatus::Success;
 }
 
@@ -473,6 +454,7 @@ EAudioRequestStatus AudioSystemImpl_FMOD::RegisterInMemoryFile(SATLAudioFileEntr
             }
             else
             {
+                AZ_Info("FMODAudioSystem", "$3Bank '%s.bank' loaded successfully", implFileEntryData->m_baseBankName.data());
                 //Cache event parameters:
                 int evtCount = 0;
                 implFileEntryData->m_FMODBank->getEventCount(&evtCount);
@@ -677,24 +659,74 @@ void AudioSystemImpl_FMOD::DeleteAudioTriggerImplData(IATLTriggerImplData *oldTr
 
 IATLRtpcImplData *AudioSystemImpl_FMOD::NewAudioRtpcImplData(const AZ::rapidxml::xml_node<char> *audioRtpcNode)
 {
+    AZ_Info("FMODAudioSystem", "NewAudioRtpcImplData called!");
     if (!audioRtpcNode)
     {
         return nullptr;
     }
 
-    bool isGlobal = true;
     auto tagName = audioRtpcNode->name();
-    AZStd::string_view target;
-    if (AZ::StringFunc::Equal(tagName, XMLTags::EventParameterTag) || AZ::StringFunc::Equal(tagName, XMLTags::SnapshotParameterTag))
+    if(AZ::StringFunc::Equal(tagName, XMLTags::EventParameterTag) || AZ::StringFunc::Equal(tagName, XMLTags::SnapshotParameterTag))
     {
-        if (auto targetAttr = audioRtpcNode->first_attribute(XMLTags::TargetAttr))
+        auto targetAttr = audioRtpcNode->first_attribute(XMLTags::TargetAttr);
+        auto nameAttr = audioRtpcNode->first_attribute(XMLTags::NameAttr);
+
+        if(targetAttr && nameAttr)
         {
-            target = targetAttr->value();
+            const char* target = targetAttr->value();
+            const char* name   = nameAttr->value();
+
+            FMOD_GUID guid = { 0 };
+            if(m_studioSystem->lookupID(target, &guid) == FMOD_OK)
+            {
+                FMOD::Studio::EventDescription* desc = nullptr;
+                if(m_studioSystem->getEventByID(&guid, &desc) == FMOD_OK)
+                {
+                    if(desc)
+                    {
+                        FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                        if(desc->getParameterDescriptionByName(name, &paramDesc) == FMOD_OK)
+                        {
+                            AZ_Info("FMODAudioSystem", "Found Parameter Description from %s! of event: %s", name, target);
+                            AZ_UNUSED(paramDesc);
+                        }
+                    }
+                    else
+                    {
+                        AZ_Warning("FMODAudioSystem", false, "Parameter Description for Event Target %s is null", target);
+                    }
+                }
+                else
+                {
+                    AZ_Warning("FMODAudioSystem", false, "GetEventByID failed to find event %s", target);
+                }
+            }
+            else
+            {
+                AZ_Warning("FMODAudioSystem", false, "LookupID failed to get event %s", target);
+            }
         }
-        isGlobal = false;
+    }
+    else
+    {
+        auto pathAttr = audioRtpcNode->first_attribute(XMLTags::PathAttr);
+        if(pathAttr)
+        {
+            AZStd::string path = pathAttr->value();
+            FMOD_STUDIO_PARAMETER_DESCRIPTION desc;
+            if(m_studioSystem->getParameterDescriptionByName(path.c_str(), &desc) == FMOD_OK)
+            {
+                AZ_Info("FMODAudioSystem", "Found global parameter of %s", path.c_str());
+            }
+            else
+            {
+                AZ_Warning("FMODAudioSytem", false, "Couldn't Found Global Parameter: %s", path.c_str());
+            }
+        }
     }
 
-    return nullptr;
+    ATLParameterRtpc_FMOD* rtpcData = nullptr;
+    return rtpcData;
 }
 
 void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData) {

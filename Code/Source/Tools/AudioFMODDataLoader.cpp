@@ -67,7 +67,7 @@ namespace AudioEngineFMOD
             }
             else
             {
-                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parentCtrl, AZStd::string(obj["path"].GetString()));
+                auto ctrlDef = AudioControls::SControlDef(obj["name"].GetString(), itemType, false, parentCtrl, obj["path"].GetString());
                 auto itemCtrl = m_audioEditorImpl->CreateControl(ctrlDef);
                 if (itemType == eFMOD_EVENT || itemType == eFMOD_SNAPSHOT)
                 {

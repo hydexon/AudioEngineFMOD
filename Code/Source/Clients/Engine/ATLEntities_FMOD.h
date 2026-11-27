@@ -93,14 +93,20 @@ namespace AudioEngineFMOD
 
     struct ATLParameterRtpc_FMOD : public Audio::IATLRtpcImplData
     {
-        explicit  ATLParameterRtpc_FMOD(AZ::u32 targetId, float shift, float mult, bool isGlobal = false)
+        explicit  ATLParameterRtpc_FMOD(
+                const char* path,
+                float shift,
+                float mult,
+                bool isGlobal = false)
             : m_shift(shift)
             , m_mult(mult)
-            , m_targetId(targetId)
+            , m_paramPath(path)
             , m_isGlobalParameter(isGlobal)
         {}
         ~ATLParameterRtpc_FMOD() override = default;
 
+        AZStd::fixed_string<256> m_paramPath;
+        FMOD_STUDIO_PARAMETER_ID m_paramId;
         AZ::u32 m_targetId;
         bool m_isGlobalParameter;
         float m_mult;

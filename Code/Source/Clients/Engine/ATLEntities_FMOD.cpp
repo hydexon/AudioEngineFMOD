@@ -1,6 +1,7 @@
 #include "ATLEntities_FMOD.h"
 
 //#include "Common_FMOD.h"
+#include "AudioSystemImplCVars.h"
 #include <AzCore/std/string/string.h>
 #include <AzCore/StringFunc/StringFunc.h>
 
@@ -264,7 +265,7 @@ namespace AudioEngineFMOD
         }
         else if (m_lpDsp)
         {
-            const float range = m_lpCutoffMax - std::max(m_lpCutoffMIn, 10000.0f);
+            const float range = m_lpCutoffMax - std::max(m_lpCutoffMIn, (float)CVars::s_FMODStudio_DSPLpfMinCutoffFreq);
             const float value = m_lpCutoffMax - (occlusion * range);
             m_lpDsp->setParameterFloat(FMOD_DSP_LOWPASS_CUTOFF, value);
         }
