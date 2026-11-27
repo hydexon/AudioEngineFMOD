@@ -202,12 +202,6 @@ namespace AudioEngineFMOD
         AZStd::vector<ATLAudioObject_FMOD*> m_registeredAudioObjects;
         AZStd::vector<ATLEventData_FMOD*> m_pendingEvents;
 
-        struct ParameterInfo {
-            FMOD_STUDIO_PARAMETER_ID id;
-            float defaultValue = 0.0f;
-        };
-
-        AZStd::unordered_map<AZStd::fixed_string<256>, ParameterInfo> m_evtParametersCache;
         FMOD::Studio::System* m_studioSystem;
         FMOD::System* m_lowlvlSystem;
         FMOD::Studio::Bank* m_masterBank;
@@ -215,8 +209,6 @@ namespace AudioEngineFMOD
 
         void SetBankPaths();
         Audio::EAudioRequestStatus MuteFMODMasterBus(bool mute);
-        void StopAllAndClearInstancesFromAudioObject(Audio::IATLAudioObjectData* sndObj);
-        void ClearStoppedEventInstances(Audio::IATLAudioObjectData* sndObj);
     };
 
 }

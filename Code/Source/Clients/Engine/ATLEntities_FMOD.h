@@ -24,13 +24,14 @@ namespace AudioEngineFMOD
         FMOD_3D_ATTRIBUTES& Get3DAttributes() { return m_attributes; }
         bool PostAudioEvent(ATLEventData_FMOD* event);
         void UnpostAudioEvent(ATLEventData_FMOD* event);
-        void PostParameter(ATLParameterRtpc_FMOD* rtpc, const float value);
+        void PostParameter(const ATLParameterRtpc_FMOD* rtpc, const float value);
+        void ResetParameter(const ATLParameterRtpc_FMOD* rtpc);
         void UnpostParameter(ATLParameterRtpc_FMOD* rtpc);
         void SetSwitch(ATLSwitchState_FMOD* state);
         void UnsetSwitch(ATLSwitchState_FMOD* state);
         void SetEnvironment(ATLEnvironment_FMOD* env, const float value);
         void UnsetEnvironment(ATLEnvironment_FMOD* env);
-        void Set3DAttributes(Audio::SATLWorldPosition& pos);
+        void Set3DAttributes(const Audio::SATLWorldPosition& pos);
         void StopAllEvents();
         void StopPlayingEvent(uint32_t eventPathId);
         void SetObstructionOcclusion(float obstruction, float occlusion);
@@ -40,11 +41,12 @@ namespace AudioEngineFMOD
         Audio::TAudioObjectID m_id;
         FMOD_3D_ATTRIBUTES m_attributes;
         AZStd::vector<ATLEventData_FMOD*> m_audioEvents;
-        AZStd::unordered_map<ATLParameterRtpc_FMOD*, float> m_parameters;
+        AZStd::unordered_map<const ATLParameterRtpc_FMOD*, float> m_parameters;
         AZStd::unordered_map<uint32_t, ATLSwitchState_FMOD*> m_switches;
         AZStd::unordered_map<ATLEnvironment_FMOD*, float> m_environments;
     };
 
+    //NOTE: They should have an EventDescription instance, to get the parameters-needed information?
     struct ATLEventData_FMOD : public Audio::IATLEventData
     {
         explicit ATLEventData_FMOD(Audio::TAudioEventID id)
@@ -93,25 +95,26 @@ namespace AudioEngineFMOD
 
     struct ATLParameterRtpc_FMOD : public Audio::IATLRtpcImplData
     {
-        explicit  ATLParameterRtpc_FMOD(
-                const char* path,
-                float shift,
-                float mult,
-                bool isGlobal = false)
-            : m_shift(shift)
-            , m_mult(mult)
-            , m_paramPath(path)
-            , m_isGlobalParameter(isGlobal)
+        explicit  ATLParameterRtpc_FMOD()
+            : m_shift(0.0f)
+            , m_mult(1.0f)
+            , m_isGlobalParameter(false)
+            , m_paramId({0})
+            , m_targetId(INVALID_AUDIO_EVENT_ID)
+            , m_validParamId(false)
+            , m_defaultValue(0.0f)
         {}
         ~ATLParameterRtpc_FMOD() override = default;
 
-        AZStd::fixed_string<256> m_paramPath;
-        FMOD_STUDIO_PARAMETER_ID m_paramId;
+        AZStd::fixed_string<256> m_targetPath;
+        AZStd::fixed_string<256> m_paramName;
+        mutable FMOD_STUDIO_PARAMETER_ID m_paramId;
         AZ::u32 m_targetId;
         bool m_isGlobalParameter;
         float m_mult;
         float m_shift;
-
+        mutable bool m_validParamId;
+        mutable float m_defaultValue;
     };
 
     struct ATLTrigger_FMOD : public Audio::IATLTriggerImplData

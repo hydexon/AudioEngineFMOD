@@ -155,7 +155,7 @@ AudioControls::IAudioSystemControl *CAudioSystemEditor_FMOD::CreateControl(const
     }
     else
     {
-        TControlPtr newControl = AZStd::make_shared<IAudioSystemCtrl_FMOD>(controlDefinition.m_name, id, controlDefinition.m_type);
+        TControlPtr newControl = AZStd::make_shared<IAudioSystemControl>(controlDefinition.m_name, id, controlDefinition.m_type);
         if (!parent)
         {
             parent = &m_rootControl;

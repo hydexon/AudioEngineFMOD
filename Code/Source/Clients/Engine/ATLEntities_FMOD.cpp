@@ -22,23 +22,13 @@ namespace AudioEngineFMOD
             m_audioEvents.push_back(event);
             for (const auto& paramPair : m_parameters)
             {
-                auto const it = g_ParameterToID.find(paramPair.first);
-                if (it != g_ParameterToID.end())
+                if(event->GetEventPathId() == paramPair.first->m_targetId)
                 {
-                    if (event->GetEventPathId() == it->first->m_targetId)
-                    {
-                        if (it->second.valid)
-                        {
-                            event->GetInstance()->setParameterByID(it->second.id, paramPair.second);
-                        }
-                        else
-                        {
-                            PostParameter(it->first, paramPair.second);
-                        }
-                    }
+                    event->GetInstance()->setParameterByID(paramPair.first->m_paramId, paramPair.second);
                 }
             }
 
+            /*
             //Switches.
             for (const auto& swPair : m_switches)
             {
@@ -62,7 +52,7 @@ namespace AudioEngineFMOD
             for (const auto& enviroPair : m_environments)
             {
                 event->TrySetEnvironment(enviroPair.first, enviroPair.second);
-            }
+            }*/
 
             event->GetInstance()->start();
             suceess = true;
@@ -80,23 +70,13 @@ namespace AudioEngineFMOD
         }
     }
 
-    void ATLAudioObject_FMOD::PostParameter(ATLParameterRtpc_FMOD* rtpc, const float value)
+    void ATLAudioObject_FMOD::PostParameter(const ATLParameterRtpc_FMOD *rtpc, const float value)
     {
         for (const auto evt : m_audioEvents)
         {
             if (evt->GetEventPathId() == rtpc->m_targetId)
             {
-                if (const auto it = g_ParameterToID.find(rtpc); it != g_ParameterToID.end())
-                {
-                    if (it->second.valid)
-                    {
-                        evt->GetInstance()->setParameterByID(it->second.id, value);
-                    }
-                    else
-                    {
-                        //What are the odds?
-                    }
-                }
+                evt->GetInstance()->setParameterByID(rtpc->m_paramId, rtpc->m_mult * value + rtpc->m_shift);
             }
         }
 
@@ -108,6 +88,17 @@ namespace AudioEngineFMOD
         else
         {
             m_parameters.emplace(rtpc, value);
+        }
+    }
+
+    void ATLAudioObject_FMOD::ResetParameter(const ATLParameterRtpc_FMOD *rtpc)
+    {
+        for(const auto evt : m_audioEvents)
+        {
+            if(evt->GetEventPathId() == rtpc->m_targetId)
+            {
+                evt->GetInstance()->setParameterByID(rtpc->m_paramId, rtpc->m_defaultValue);
+            }
         }
     }
 
@@ -151,7 +142,7 @@ namespace AudioEngineFMOD
         m_environments.erase(env);
     }
 
-    void ATLAudioObject_FMOD::Set3DAttributes(Audio::SATLWorldPosition& pos)
+    void ATLAudioObject_FMOD::Set3DAttributes(const Audio::SATLWorldPosition &pos)
     {
         m_attributes = Utils::CreateFMOD3DAttributes(pos.GetPositionVec(), pos.GetForwardVec(), pos.GetUpVec());
         for (const auto evt : m_audioEvents)

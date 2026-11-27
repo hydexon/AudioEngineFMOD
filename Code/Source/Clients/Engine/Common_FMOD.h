@@ -88,10 +88,8 @@ namespace AudioEngineFMOD
 
     typedef AZStd::fixed_string<256> FMODStringPath;
     typedef AZStd::unordered_map<AZ::u32, FMOD::Studio::EventDescription*> FMODPathIdToEventDescriptionMap;
-    typedef AZStd::unordered_map<ATLParameterRtpc_FMOD*, ParamId> FMODParamToIDMap;
     typedef AZStd::unordered_map<ATLSwitchState_FMOD*, ParamId> FMODSwitchToIdMap;
 
-    inline FMODParamToIDMap g_ParameterToID;
     inline FMODSwitchToIdMap g_SwitchToID;
     inline FMODPathIdToEventDescriptionMap g_PathIdToEventDescription;
 
