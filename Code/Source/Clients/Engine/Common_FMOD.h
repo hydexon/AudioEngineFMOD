@@ -77,20 +77,9 @@ namespace AudioEngineFMOD
 
     }
 
-    struct ATLParameterRtpc_FMOD;
-    struct ATLSwitchState_FMOD;
-
-    struct ParamId
-    {
-        bool valid = false;
-        FMOD_STUDIO_PARAMETER_ID id = { 0 };
-    };
-
     typedef AZStd::fixed_string<256> FMODStringPath;
     typedef AZStd::unordered_map<AZ::u32, FMOD::Studio::EventDescription*> FMODPathIdToEventDescriptionMap;
-    typedef AZStd::unordered_map<ATLSwitchState_FMOD*, ParamId> FMODSwitchToIdMap;
 
-    inline FMODSwitchToIdMap g_SwitchToID;
     inline FMODPathIdToEventDescriptionMap g_PathIdToEventDescription;
 
 }

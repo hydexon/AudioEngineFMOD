@@ -32,7 +32,7 @@ void FMODParamToStateWidget::UpdateConnectionFromWidgets()
         return;
 
     auto conn = static_cast<FMODParamToStateConnection*>(m_conn.get());
-    ui->dsb_Value->setValue(conn->m_value);
+    conn->m_value = ui->dsb_Value->value();
 
     emit PropertiesChanged();
 }
@@ -42,7 +42,7 @@ void FMODParamToStateWidget::UpdateWidgetsFromConnection()
     m_inUpdateWidgetsFromConnection = true;
 
     auto conn = static_cast<FMODParamToStateConnection*>(m_conn.get());
-    conn->m_value = ui->dsb_Value->value();
+    ui->dsb_Value->setValue(conn->m_value);
 
     m_inUpdateWidgetsFromConnection = false;
 }

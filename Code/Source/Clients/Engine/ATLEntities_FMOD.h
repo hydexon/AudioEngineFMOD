@@ -27,10 +27,10 @@ namespace AudioEngineFMOD
         void PostParameter(const ATLParameterRtpc_FMOD* rtpc, const float value);
         void ResetParameter(const ATLParameterRtpc_FMOD* rtpc);
         void UnpostParameter(ATLParameterRtpc_FMOD* rtpc);
-        void SetSwitch(ATLSwitchState_FMOD* state);
-        void UnsetSwitch(ATLSwitchState_FMOD* state);
-        void SetEnvironment(ATLEnvironment_FMOD* env, const float value);
-        void UnsetEnvironment(ATLEnvironment_FMOD* env);
+        void SetSwitch(const ATLSwitchState_FMOD* state);
+        void UnsetSwitch(const ATLSwitchState_FMOD* state);
+        void SetEnvironment(const ATLEnvironment_FMOD* env, const float amount);
+        void UnsetEnvironment(const ATLEnvironment_FMOD* env);
         void Set3DAttributes(const Audio::SATLWorldPosition& pos);
         void StopAllEvents();
         void StopPlayingEvent(uint32_t eventPathId);
@@ -42,8 +42,8 @@ namespace AudioEngineFMOD
         FMOD_3D_ATTRIBUTES m_attributes;
         AZStd::vector<ATLEventData_FMOD*> m_audioEvents;
         AZStd::unordered_map<const ATLParameterRtpc_FMOD*, float> m_parameters;
-        AZStd::unordered_map<uint32_t, ATLSwitchState_FMOD*> m_switches;
-        AZStd::unordered_map<ATLEnvironment_FMOD*, float> m_environments;
+        AZStd::unordered_map<uint32_t, const ATLSwitchState_FMOD*> m_switches;
+        AZStd::unordered_map<const ATLEnvironment_FMOD*, float> m_environments;
     };
 
     //NOTE: They should have an EventDescription instance, to get the parameters-needed information?
@@ -76,7 +76,7 @@ namespace AudioEngineFMOD
         bool PrepareForOcclusion();
         void SetOcclusionParameterID(FMOD_STUDIO_PARAMETER_ID& paramId);
         void SetOcclusionObstruction(float occlusion, float obstruction);
-        void TrySetEnvironment(ATLEnvironment_FMOD* environment, float value) const;
+        void TrySetEnvironment(const ATLEnvironment_FMOD* environment, float value) const;
     private:
         Audio::TAudioEventID m_id;
         AZ::u32 m_eventPathId;
@@ -150,21 +150,21 @@ namespace AudioEngineFMOD
 
     struct ATLSwitchState_FMOD : public Audio::IATLSwitchStateImplData
     {
-        explicit ATLSwitchState_FMOD(
-            uint32_t evtPathId,
-            float value,
-            bool isGlobal,
-            const char* name)
-        : m_eventPathId(evtPathId)
-        , m_value(value)
-        , m_isGlobal(isGlobal)
-        , m_name(name)
+        explicit ATLSwitchState_FMOD()
+        : m_value(0.0f)
+        , m_isGlobal(false)
+        , m_targetEventPathId(INVALID_AUDIO_CONTROL_ID)
+        , m_paramIdValid(false)
+        , m_paramId({0})
         {}
 
-        uint32_t m_eventPathId;
+        uint32_t m_targetEventPathId;
+        AZStd::fixed_string<256> m_targetPath;
+        AZStd::fixed_string<128> m_name;
+        mutable FMOD_STUDIO_PARAMETER_ID m_paramId;
         float m_value;
         bool m_isGlobal;
-        AZStd::fixed_string<256> m_name;
+        mutable bool m_paramIdValid;
     };
 
     struct ATLListenerData_FMOD : public Audio::IATLListenerData
@@ -177,7 +177,6 @@ namespace AudioEngineFMOD
 
         int m_id;
         FMOD_3D_ATTRIBUTES m_attributes;
-
     };
 
     struct SATLAudioFileEntryData_FMOD : public Audio::IATLAudioFileEntryData

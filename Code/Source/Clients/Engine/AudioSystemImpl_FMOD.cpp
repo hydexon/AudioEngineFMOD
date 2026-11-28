@@ -465,20 +465,74 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetRtpc(IATLAudioObjectData *objectDat
     return result;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetSwitchState(IATLAudioObjectData *objectData, const IATLSwitchStateImplData *switchStateData)
+{
     EAudioRequestStatus result = EAudioRequestStatus::Failure;
 
     auto* fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
-    const auto* fmodSwitchState = static_cast<const ATLSwitchState_FMOD*>(switchStateData);
+    const auto* fmodState = static_cast<const ATLSwitchState_FMOD*>(switchStateData);
 
-    if(fmodObj && fmodSwitchState)
+    if(fmodState)
     {
+        if(fmodState->m_isGlobal)
+        {
+            if(m_studioSystem->setParameterByID(fmodState->m_paramId, fmodState->m_value) == FMOD_OK)
+            {
+                result = EAudioRequestStatus::Success;
+            }
+            else
+            {
+                AZ_Warning("FMODAudioSystem", false, "Unable to set global parameter for switch!");
+            }
+        }
+        else
+        {
+            if(fmodObj)
+            {
+                if(fmodState->m_paramIdValid)
+                {
+                    fmodObj->SetSwitch(fmodState);
+                    result = EAudioRequestStatus::Success;
+                }
+                else
+                {
+                    FMOD::Studio::EventDescription* desc = nullptr;
+                    FMOD_STUDIO_PARAMETER_DESCRIPTION paramDesc;
+                    if(auto it = g_PathIdToEventDescription.find(fmodState->m_targetEventPathId); it != g_PathIdToEventDescription.end())
+                    {
+                        desc = it->second;
+                    }
+                    else
+                    {
+                        AZ_Info("FMODAudioSystem", "We can't find event description from cache, we have to lookup manually.");
+                        FMOD_GUID guid = {0};
+                        if(m_studioSystem->lookupID(fmodState->m_targetPath.c_str(), &guid) == FMOD_OK)
+                        {
+                             if(m_studioSystem->getEventByID(&guid, &desc) == FMOD_OK)
+                             {
+                                 g_PathIdToEventDescription.emplace(fmodState->m_targetEventPathId, desc);
+                             }
+                        }
+                    }
+                    if(desc)
+                    {
+                        desc->getParameterDescriptionByName(fmodState->m_name.c_str(), &paramDesc);
+                        fmodState->m_paramId = paramDesc.id;
+                        fmodState->m_paramIdValid = true;
+                        fmodObj->SetSwitch(fmodState);
+                        result = EAudioRequestStatus::Success;
+                    }
+                }
+            }
+        }
     }
+
 
     return result;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion) {
+EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjectData *objectData, float obstruction, float occlusion)
+{
     auto fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
 
     if(fmodObj)
@@ -492,15 +546,29 @@ EAudioRequestStatus AudioSystemImpl_FMOD::SetObstructionOcclusion(IATLAudioObjec
     return EAudioRequestStatus::Success;
 }
 
-EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount) {
-
+EAudioRequestStatus AudioSystemImpl_FMOD::SetEnvironment(IATLAudioObjectData *objectData, const IATLEnvironmentImplData *environmentData, float amount)
+{
+    EAudioRequestStatus result = EAudioRequestStatus::Failure;
     auto fmodObj = static_cast<ATLAudioObject_FMOD*>(objectData);
     const auto fmodEnv = static_cast<const ATLEnvironment_FMOD*>(environmentData);
 
     if(fmodObj && fmodEnv)
     {
+        if(fmodObj->GetId() != m_globalAudioObjectId)
+        {
+            fmodObj->SetEnvironment(fmodEnv, amount);
+        }
+        else
+        {
+            for(const auto obj : m_registeredAudioObjects)
+            {
+                obj->SetEnvironment(fmodEnv, amount);
+            }
+        }
+        result = EAudioRequestStatus::Success;
     }
-    return EAudioRequestStatus::Failure;
+
+    return result;
 }
 
 EAudioRequestStatus AudioSystemImpl_FMOD::SetListenerPosition(IATLListenerData *listenerData, const SATLWorldPosition &newPosition) {
@@ -649,6 +717,7 @@ const char * const AudioSystemImpl_FMOD::GetAudioFileLocation(SATLAudioFileEntry
     return nullptr;
 }
 
+//TODO: delete?
 AZStd::string GetATLControlName(const AZ::rapidxml::xml_node<char>* node)
 {
     //Get the ATL Control Trigger name for debug purposes:
@@ -810,21 +879,129 @@ void AudioSystemImpl_FMOD::DeleteAudioRtpcImplData(IATLRtpcImplData *oldRtpcData
 
 IATLSwitchStateImplData *AudioSystemImpl_FMOD::NewAudioSwitchStateImplData(const AZ::rapidxml::xml_node<char> *audioSwitchStateNode)
 {
+    const char* tag = audioSwitchStateNode->name();
 
-    return nullptr;
+    ATLSwitchState_FMOD* fmodState = nullptr;
+    if(AZ::StringFunc::Equal(tag, XMLTags::EventParameterTag) || AZ::StringFunc::Equal(tag, XMLTags::SnapshotParameterTag))
+    {
+
+        AZ::u32 targetId = INVALID_AUDIO_EVENT_ID;
+        AZStd::fixed_string<256> targetPath;
+
+        if(auto targetAttr = audioSwitchStateNode->first_attribute(XMLTags::TargetAttr))
+        {
+            targetPath = targetAttr->value();
+            targetId = AudioStringToID<AZ::u32>(targetPath.c_str());
+        }
+        else
+        {
+            AZ_Error("FMODAudioSystem", false, "Missing Target Event Attribute!");
+            return nullptr;
+        }
+
+        const char* name = nullptr;
+        if(auto nameAttr = audioSwitchStateNode->first_attribute(XMLTags::NameAttr))
+        {
+            name = nameAttr->value();
+        }
+
+        fmodState = azcreate(ATLSwitchState_FMOD, (), Audio::AudioImplAllocator);
+        fmodState->m_isGlobal = false;
+        fmodState->m_targetEventPathId = targetId;
+        fmodState->m_name = name;
+    }
+    else if(AZ::StringFunc::Equal(tag, XMLTags::GlobalParameterTag))
+    {
+        auto pathAttr = audioSwitchStateNode->first_attribute(XMLTags::PathAttr);
+        if(pathAttr)
+        {
+            AZStd::string path = pathAttr->value();
+            FMOD_STUDIO_PARAMETER_DESCRIPTION desc;
+            if(m_studioSystem->getParameterDescriptionByName(path.c_str(), &desc) == FMOD_OK)
+            {
+                fmodState = azcreate(ATLSwitchState_FMOD, (), Audio::AudioImplAllocator);
+                fmodState->m_isGlobal = true;
+                fmodState->m_paramId = desc.id;
+                fmodState->m_paramIdValid = true; //Just in case.
+            }
+            else
+            {
+                AZ_Error("FMODAudioSystem", false, "Unable to get global parameter named: %s", path.c_str());
+                return nullptr;
+            }
+        }
+    }
+    else
+    {
+        return nullptr;
+    }
+
+    if(fmodState)
+    {
+        if(auto multAttr = audioSwitchStateNode->first_attribute(XMLTags::MultAttr))
+        {
+            fmodState->m_value = AZ::StringFunc::ToFloat(multAttr->value());
+        }
+    }
+
+    return fmodState;
 
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData([[maybe_unused]] IATLSwitchStateImplData *oldAudioSwitchStateData) {
+void AudioSystemImpl_FMOD::DeleteAudioSwitchStateImplData(IATLSwitchStateImplData *oldAudioSwitchStateData)
+{
+    for(const auto fmodObject : m_registeredAudioObjects)
+    {
+        fmodObject->UnsetSwitch(static_cast<ATLSwitchState_FMOD*>(oldAudioSwitchStateData));
+    }
+
     azdestroy(oldAudioSwitchStateData, Audio::AudioImplAllocator, ATLSwitchState_FMOD);
 }
 
-IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode) {
+IATLEnvironmentImplData *AudioSystemImpl_FMOD::NewAudioEnvironmentImplData(const AZ::rapidxml::xml_node<char> *audioEnvironmentNode)
+{
+    const char* tag = audioEnvironmentNode->name();
+    ATLEnvironment_FMOD* envData = nullptr;
 
-    return nullptr;
+    if(AZ::StringFunc::Equal(tag, XMLTags::ReturnTag))
+    {
+        if(auto pathAttr = audioEnvironmentNode->first_attribute(XMLTags::PathAttr))
+        {
+            FMOD_GUID guid  = {0};
+            const char* path = pathAttr->value();
+            if(m_studioSystem->lookupID(path, &guid) == FMOD_OK)
+            {
+                FMOD::Studio::Bus* rBus = nullptr;
+                m_studioSystem->getBusByID(&guid, &rBus);
+                envData = azcreate(ATLEnvironment_FMOD, (nullptr, rBus), Audio::AudioImplAllocator);
+            }
+        }
+    }
+    else if(AZ::StringFunc::Equal(tag, XMLTags::SnapshotTag))
+    {
+        if(auto pathAttr = audioEnvironmentNode->first_attribute(XMLTags::PathAttr))
+        {
+            FMOD_GUID guid  = {0};
+            const char* path = pathAttr->value();
+            if(m_studioSystem->lookupID(path, &guid) == FMOD_OK)
+            {
+                FMOD::Studio::EventDescription* snapshotDesc = nullptr;
+                m_studioSystem->getEventByID(&guid, &snapshotDesc);
+                envData = azcreate(ATLEnvironment_FMOD, (snapshotDesc, nullptr), Audio::AudioImplAllocator);
+            }
+        }
+    }
+
+    return envData;
 }
 
-void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData *oldEnvironmentData) {
+void AudioSystemImpl_FMOD::DeleteAudioEnvironmentImplData(IATLEnvironmentImplData *oldEnvironmentData)
+{
+    for(const auto fmodObj : m_registeredAudioObjects)
+    {
+        fmodObj->UnsetEnvironment(static_cast<ATLEnvironment_FMOD*>(oldEnvironmentData));
+    }
+
     azdestroy(oldEnvironmentData, Audio::AudioImplAllocator, ATLEnvironment_FMOD);
 }
 

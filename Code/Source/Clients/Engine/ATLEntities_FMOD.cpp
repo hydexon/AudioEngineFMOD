@@ -28,32 +28,20 @@ namespace AudioEngineFMOD
                 }
             }
 
-            /*
             //Switches.
             for (const auto& swPair : m_switches)
             {
-                auto const it = g_SwitchToID.find(swPair.second);
-                if (it != g_SwitchToID.end())
+                if(event->GetEventPathId() == swPair.first)
                 {
-                    if (event->GetEventPathId() == it->first->m_eventPathId)
-                    {
-                        if (it->second.valid)
-                        {
-                            event->GetInstance()->setParameterByID(it->second.id, swPair.second->m_value);
-                        }
-                        else
-                        {
-                            SetSwitch(swPair.second);
-                        }
-                    }
+                    event->GetInstance()->setParameterByID(swPair.second->m_paramId, swPair.second->m_value);
                 }
             }
+
             //Environments:
             for (const auto& enviroPair : m_environments)
             {
                 event->TrySetEnvironment(enviroPair.first, enviroPair.second);
-            }*/
-
+            }
             event->GetInstance()->start();
             suceess = true;
         }
@@ -107,37 +95,58 @@ namespace AudioEngineFMOD
         m_parameters.erase(rtpc);
     }
 
-    void ATLAudioObject_FMOD::SetSwitch(ATLSwitchState_FMOD* state)
+    void ATLAudioObject_FMOD::SetSwitch(const ATLSwitchState_FMOD *state)
     {
         for (const auto evt : m_audioEvents)
         {
-            if (evt->GetEventPathId() == state->m_eventPathId)
+            if (evt->GetEventPathId() == state->m_targetEventPathId)
             {
-
+                evt->GetInstance()->setParameterByID(state->m_paramId, state->m_value);
             }
         }
 
-        const auto iter = m_switches.find(state->m_eventPathId);
+        const auto iter = m_switches.find(state->m_targetEventPathId);
         if (iter != m_switches.end())
         {
             iter->second = state;
         }
         else
         {
-            m_switches.emplace(state->m_eventPathId, state);
+            m_switches.emplace(state->m_targetEventPathId, state);
         }
     }
 
-    void ATLAudioObject_FMOD::UnsetSwitch(ATLSwitchState_FMOD* state)
+    void ATLAudioObject_FMOD::UnsetSwitch(const ATLSwitchState_FMOD *state)
     {
-        m_switches.erase(state->m_eventPathId);
+        m_switches.erase(state->m_targetEventPathId);
     }
 
-    void ATLAudioObject_FMOD::SetEnvironment(ATLEnvironment_FMOD* env, const float value)
+    void ATLAudioObject_FMOD::SetEnvironment(const ATLEnvironment_FMOD *env, const float amount)
     {
+        bool isSet = true;
+        auto it = m_environments.find(env);
+        if(it != m_environments.end())
+        {
+            if(isSet = AZStd::abs(it->second - amount) > 0.001f)
+            {
+                it->second = amount;
+            }
+        }
+        else
+        {
+            m_environments.emplace(env, amount);
+        }
+
+        if(isSet)
+        {
+            for(const auto evt : m_audioEvents)
+            {
+                evt->TrySetEnvironment(env, amount);
+            }
+        }
     }
 
-    void ATLAudioObject_FMOD::UnsetEnvironment(ATLEnvironment_FMOD* env)
+    void ATLAudioObject_FMOD::UnsetEnvironment(const ATLEnvironment_FMOD *env)
     {
         m_environments.erase(env);
     }
@@ -262,7 +271,7 @@ namespace AudioEngineFMOD
         }
     }
 
-    void ATLEventData_FMOD::TrySetEnvironment(ATLEnvironment_FMOD* environment, float value) const
+    void ATLEventData_FMOD::TrySetEnvironment(const ATLEnvironment_FMOD *environment, float value) const
     {
         if (m_instance == nullptr && m_masterTrack == nullptr)
         {

@@ -402,7 +402,6 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
     switch (control->GetType())
     {
     case eFMOD_EVENT:
-    case eFMOD_SNAPSHOT:
         {
             auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::PathAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetId()].c_str()));
             pNode->append_attribute(pathAttr);
@@ -414,6 +413,7 @@ AZ::rapidxml::xml_node<char> *CAudioSystemEditor_FMOD::CreateXMLNodeFromConnecti
             }
         }
     break;
+    case eFMOD_SNAPSHOT:
     case eFMOD_RETURN:
         {
             auto pathAttr = xmlAlloc.allocate_attribute(XMLTags::PathAttr, xmlAlloc.allocate_string(m_fmodControlPaths[control->GetId()].c_str()));
